@@ -61,7 +61,7 @@ export const TripManifestPrint: React.FC<TripManifestPrintProps> = ({
             <div key={rIdx} className="flex justify-between items-stretch gap-1">
               {row.map((seat, cIdx) => {
                 if (!seat) {
-                  return <div key={cIdx} className="flex-1 min-h-[3rem] border border-transparent"></div>;
+                  return <div key={cIdx} className="flex-1 min-h-12 border border-transparent"></div>;
                 }
 
                 const isBooked = seat.status === 'booked';

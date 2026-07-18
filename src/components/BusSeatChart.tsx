@@ -82,7 +82,7 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
               {row.map((seat, cIdx) => {
                 if (!seat) {
                   // Aisle spacer
-                  return <div key={cIdx} className="w-14 min-h-[4.5rem] flex-1 flex items-center justify-center text-slate-300 text-xs font-mono select-none">Aisle</div>;
+                  return <div key={cIdx} className="w-14 min-h-18 flex-1 flex items-center justify-center text-slate-300 text-xs font-mono select-none">Aisle</div>;
                 }
 
                 const isSelected = selectedSeats.includes(seat.seat_code);
@@ -113,7 +113,7 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
                     id={`seat-btn-${seat.seat_code}`}
                     onClick={() => onSeatClick(seat)}
                     disabled={isDisabled && !isAdmin} // Only allow admin to click disabled seats (to re-enable them)
-                    className={`flex-1 min-w-[4rem] max-w-[7.5rem] min-h-[4.8rem] rounded-xl border flex flex-col items-stretch text-left transition-all overflow-hidden cursor-pointer ${bgClass}`}
+                    className={`flex-1 min-w-16 max-w-30 min-h-[4.8rem] rounded-xl border flex flex-col items-stretch text-left transition-all overflow-hidden cursor-pointer ${bgClass}`}
                   >
                     {/* Badge top tab */}
                     <div className={`text-[10px] font-mono font-bold py-0.5 px-2 text-center select-none ${badgeBg}`}>
@@ -123,7 +123,7 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
                     {/* Customer name body */}
                     <div className="p-1.5 flex-1 flex flex-col justify-between">
                       {isBooked ? (
-                        <div className="text-[11px] font-extrabold leading-tight line-clamp-2 uppercase break-words text-center m-auto text-slate-800">
+                        <div className="text-[11px] font-extrabold leading-tight line-clamp-2 uppercase wrap-break-word text-center m-auto text-slate-800">
                           {seat.customer_name || 'Booked'}
                         </div>
                       ) : isDisabled ? (

@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trip, BusModelType } from '../types.js';
 import { fetchTrips, createTrip } from '../lib/api.js';
-import { Plus, Calendar, Bus, Ticket, Copy, Check, Eye, Trash2, IndianRupee, Landmark } from 'lucide-react';
+import { Plus, Calendar, Bus, Ticket, Copy, Check, Eye, Trash2, ReceiptIndianRupee, Landmark } from 'lucide-react';
 
 interface AdminTripsProps {
   onSelectTrip: (id: string) => void;
@@ -154,7 +154,7 @@ export const AdminTrips: React.FC<AdminTripsProps> = ({ onSelectTrip }) => {
 
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100">
-            <IndianRupee className="w-6 h-6" />
+            <ReceiptIndianRupee className="w-6 h-6" />
           </div>
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ticket Price Base</span>

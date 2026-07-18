@@ -1,0 +1,61 @@
+{
+  "admins": [
+    {
+      "id": "admin-1",
+      "name": "Jain Tours Admin",
+      "login_key_hash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
+    }
+  ],
+  "company_settings": {
+    "company_name": "Jain Tours & Travel",
+    "tagline": "श्री महावीराय नमः",
+    "logo_url": "",
+    "header_image_url": ""
+  },
+  "trips": [],
+  "trip_seats": [],
+  "bookings": [
+    {
+      "id": "03ad5f37-ed07-40f7-b139-220c2ca4ef56",
+      "trip_id": "b6b0131e-dcbd-4202-a1a5-0d2bb0074d0e",
+      "customer_name": "Test User",
+      "mobile_number": "9865457812",
+      "message": "This is a test note",
+      "payment_screenshot_url": null,
+      "advance_amount_total": 2000,
+      "booking_source": "admin",
+      "payment_verified": true,
+      "status": "confirmed",
+      "created_at": "2026-07-18T14:17:03.655Z",
+      "cancelled_at": null,
+      "cancelled_by": null
+    }
+  ],
+  "booking_seats": [
+    {
+      "id": "060a0e1e-02b2-4bbb-a163-82cc4c8db083",
+      "booking_id": "03ad5f37-ed07-40f7-b139-220c2ca4ef56",
+      "trip_seat_id": "seat-b6b0131e-dcbd-4202-a1a5-0d2bb0074d0e-5",
+      "advance_amount_for_seat": 2000,
+      "seat_code": "L-2A"
+    }
+  ],
+  "trip_logs": [
+    {
+      "id": "4bd21e3a-9c30-4fb7-9c70-694a3396e045",
+      "trip_id": "b6b0131e-dcbd-4202-a1a5-0d2bb0074d0e",
+      "actor_type": "admin",
+      "actor_id": "admin-1",
+      "action": "seat_booked",
+      "seat_codes": [
+        "L-2A"
+      ],
+      "details": {
+        "customer_name": "Test User",
+        "advance_amount": 2000,
+        "source": "admin"
+      },
+      "created_at": "2026-07-18T14:17:03.655Z"
+    }
+  ]
+}

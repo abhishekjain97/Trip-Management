@@ -17,7 +17,7 @@ import { BusSeatChart } from './BusSeatChart.js';
 import { TripManifestPrint } from './TripManifestPrint.js';
 import {
   ArrowLeft,
-  DollarSign,
+  ReceiptIndianRupee,
   Users,
   Copy,
   Check,
@@ -236,7 +236,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
     <div className="space-y-8 p-1">
       {/* Printable Area Wrapper with PDF Preview and Download button */}
       {isPrintMode && (
-        <div className="fixed inset-0 bg-slate-100 z-50 overflow-y-auto print:bg-white print:p-0">
+        <div className="fixed inset-0 bg-slate-100 z-50 overflow-y-auto print:bg-white print:p-0 h-screen">
           {/* Top Control Bar - Hidden during printing */}
           <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm z-50 print:hidden">
             <div className="flex items-center gap-3">
@@ -332,7 +332,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
         {/* Total Capacity Valuation */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1 relative overflow-hidden">
           <div className="absolute -top-4 -right-4 w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
-            <DollarSign className="w-6 h-6 text-slate-400" />
+            <ReceiptIndianRupee className="w-6 h-6 text-slate-400" />
           </div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Trip Capacity Value</span>
           <span className="text-xl font-black text-slate-900 block">₹{totalCapacityValue.toLocaleString('en-IN')}</span>
@@ -342,7 +342,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
         {/* Deposit/Advance Collected */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1 relative overflow-hidden">
           <div className="absolute -top-4 -right-4 w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center">
-            <DollarSign className="w-6 h-6 text-emerald-500" />
+            <ReceiptIndianRupee className="w-6 h-6 text-emerald-500" />
           </div>
           <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Advance Collected</span>
           <span className="text-xl font-black text-emerald-800 block">₹{advanceCollected.toLocaleString('en-IN')}</span>
@@ -352,7 +352,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
         {/* Balance Due */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1 relative overflow-hidden">
           <div className="absolute -top-4 -right-4 w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center">
-            <DollarSign className="w-6 h-6 text-amber-500" />
+            <ReceiptIndianRupee className="w-6 h-6 text-amber-500" />
           </div>
           <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Outstanding Balance Due</span>
           <span className="text-xl font-black text-amber-800 block">₹{balanceDue.toLocaleString('en-IN')}</span>
@@ -521,7 +521,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
               </span>
             </h3>
 
-            <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+            <div className="overflow-x-auto max-h-75 overflow-y-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -582,20 +582,27 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
               Route Activity Logs
             </h3>
 
-            <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+            <div className="space-y-4 max-h-87.5 overflow-y-auto pr-1">
               {logs.length === 0 ? (
                 <div className="text-center text-slate-400 text-xs italic py-6">No historical logs compiled yet.</div>
               ) : (
                 logs.map((log) => {
-                  const logTime = new Date(log.created_at).toLocaleTimeString('en-IN', {
+                  const logDate = new Date(log.created_at);
+                  const logDateStr = logDate.toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                  });
+                  const logTimeStr = logDate.toLocaleTimeString('en-IN', {
                     hour: '2-digit',
                     minute: '2-digit'
                   });
 
                   return (
-                    <div key={log.id} className="flex gap-3 text-xs border-b border-slate-100 pb-3 last:border-0">
-                      <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 text-slate-500 font-mono text-[9px] font-bold">
-                        {logTime}
+                    <div key={log.id} className="flex items-center gap-3 text-xs border-b border-slate-100 pb-3 last:border-0">
+                      <div className="w-16 shrink-0 leading-tight">
+                        <div className="text-[10px] font-bold text-slate-600">{logDateStr}</div>
+                        <div className="text-[9px] font-mono text-slate-400">{logTimeStr}</div>
                       </div>
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -864,7 +871,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
 
       {/* FULLSCREEN LIGHTBOX FOR SCREENSHOTS */}
       {lightboxUrl && (
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 z-60">
           <button
             onClick={() => setLightboxUrl(null)}
             className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center justify-center text-white text-lg font-bold hover:scale-105 transition-all cursor-pointer shadow"

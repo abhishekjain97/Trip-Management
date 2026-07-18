@@ -1177,70 +1177,53 @@ ON CONFLICT (id) DO NOTHING;
       }
     } else if (busModel === '2x2_sleeper') {
       const seatsPerDeck = Math.ceil(totalSeats / 2);
-      
-      let lowerRemaining = seatsPerDeck;
-      for (let r = 1; r <= 6; r++) {
-        const cols = r === 6 ? [
-          { side: 'left' as const, code: 'A', col: 0 },
-          { side: 'left' as const, code: 'B', col: 1 },
-          { side: 'left' as const, code: 'M', col: 2 },
-          { side: 'right' as const, code: 'C', col: 3 },
-          { side: 'right' as const, code: 'D', col: 4 }
-        ] : [
-          { side: 'left' as const, code: 'A', col: 0 },
-          { side: 'left' as const, code: 'B', col: 1 },
-          { side: 'right' as const, code: 'C', col: 3 },
-          { side: 'right' as const, code: 'D', col: 4 }
-        ];
+      const upperDeckCount = totalSeats - seatsPerDeck;
 
-        for (const col of cols) {
-          if (lowerRemaining > 0) {
-            seats.push({
-              id: `seat-${tripId}-${seatIdCounter++}`,
-              trip_id: tripId,
-              seat_code: `L-${r}${col.code}`,
-              deck: 'lower',
-              side: col.side,
-              status: 'available',
-              row_num: r,
-              col_num: col.col
-            });
-            lowerRemaining--;
+      const generateSleeperDeck = (deckCount: number, deck: 'lower' | 'upper', prefix: 'L' | 'U') => {
+        // Fill rows of 4 (A, B left | C, D right); if exactly 1 seat is left over,
+        // it merges into the last row as a centered 5th seat instead of its own row.
+        const remainder = deckCount % 4;
+        const mergeLeftoverSeat = remainder === 1 && deckCount > 4;
+        const numRows = mergeLeftoverSeat
+          ? Math.floor(deckCount / 4)
+          : Math.ceil(deckCount / 4);
+
+        let remaining = deckCount;
+        for (let r = 1; r <= numRows; r++) {
+          const isLastRow = r === numRows;
+          const cols = isLastRow && mergeLeftoverSeat ? [
+            { side: 'left' as const, code: 'A', col: 0 },
+            { side: 'left' as const, code: 'B', col: 1 },
+            { side: 'left' as const, code: 'M', col: 2 },
+            { side: 'right' as const, code: 'C', col: 3 },
+            { side: 'right' as const, code: 'D', col: 4 }
+          ] : [
+            { side: 'left' as const, code: 'A', col: 0 },
+            { side: 'left' as const, code: 'B', col: 1 },
+            { side: 'right' as const, code: 'C', col: 3 },
+            { side: 'right' as const, code: 'D', col: 4 }
+          ];
+
+          for (const col of cols) {
+            if (remaining > 0) {
+              seats.push({
+                id: `seat-${tripId}-${seatIdCounter++}`,
+                trip_id: tripId,
+                seat_code: `${prefix}-${r}${col.code}`,
+                deck,
+                side: col.side,
+                status: 'available',
+                row_num: r,
+                col_num: col.col
+              });
+              remaining--;
+            }
           }
         }
-      }
+      };
 
-      let upperRemaining = totalSeats - seats.length;
-      for (let r = 1; r <= 6; r++) {
-        const cols = r === 6 ? [
-          { side: 'left' as const, code: 'A', col: 0 },
-          { side: 'left' as const, code: 'B', col: 1 },
-          { side: 'left' as const, code: 'M', col: 2 },
-          { side: 'right' as const, code: 'C', col: 3 },
-          { side: 'right' as const, code: 'D', col: 4 }
-        ] : [
-          { side: 'left' as const, code: 'A', col: 0 },
-          { side: 'left' as const, code: 'B', col: 1 },
-          { side: 'right' as const, code: 'C', col: 3 },
-          { side: 'right' as const, code: 'D', col: 4 }
-        ];
-
-        for (const col of cols) {
-          if (upperRemaining > 0) {
-            seats.push({
-              id: `seat-${tripId}-${seatIdCounter++}`,
-              trip_id: tripId,
-              seat_code: `U-${r}${col.code}`,
-              deck: 'upper',
-              side: col.side,
-              status: 'available',
-              row_num: r,
-              col_num: col.col
-            });
-            upperRemaining--;
-          }
-        }
-      }
+      generateSleeperDeck(seatsPerDeck, 'lower', 'L');
+      generateSleeperDeck(upperDeckCount, 'upper', 'U');
     } else if (busModel === '2x1_sleeper') {
       const seatsPerDeck = Math.ceil(totalSeats / 2);
       const sleepersPerRow = 3;
