@@ -1177,12 +1177,16 @@ ON CONFLICT (id) DO NOTHING;
       }
     } else if (busModel === '2x2_sleeper') {
       const seatsPerDeck = Math.ceil(totalSeats / 2);
-      const sleepersPerRow = 4;
       
       let lowerRemaining = seatsPerDeck;
-      const lowerRows = Math.ceil(seatsPerDeck / sleepersPerRow);
-      for (let r = 1; r <= lowerRows; r++) {
-        const cols = [
+      for (let r = 1; r <= 6; r++) {
+        const cols = r === 6 ? [
+          { side: 'left' as const, code: 'A', col: 0 },
+          { side: 'left' as const, code: 'B', col: 1 },
+          { side: 'left' as const, code: 'M', col: 2 },
+          { side: 'right' as const, code: 'C', col: 3 },
+          { side: 'right' as const, code: 'D', col: 4 }
+        ] : [
           { side: 'left' as const, code: 'A', col: 0 },
           { side: 'left' as const, code: 'B', col: 1 },
           { side: 'right' as const, code: 'C', col: 3 },
@@ -1207,9 +1211,14 @@ ON CONFLICT (id) DO NOTHING;
       }
 
       let upperRemaining = totalSeats - seats.length;
-      const upperRows = Math.ceil(upperRemaining / sleepersPerRow);
-      for (let r = 1; r <= upperRows; r++) {
-        const cols = [
+      for (let r = 1; r <= 6; r++) {
+        const cols = r === 6 ? [
+          { side: 'left' as const, code: 'A', col: 0 },
+          { side: 'left' as const, code: 'B', col: 1 },
+          { side: 'left' as const, code: 'M', col: 2 },
+          { side: 'right' as const, code: 'C', col: 3 },
+          { side: 'right' as const, code: 'D', col: 4 }
+        ] : [
           { side: 'left' as const, code: 'A', col: 0 },
           { side: 'left' as const, code: 'B', col: 1 },
           { side: 'right' as const, code: 'C', col: 3 },

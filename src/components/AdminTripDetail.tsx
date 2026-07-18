@@ -29,7 +29,8 @@ import {
   UserCheck,
   Eye,
   FileSpreadsheet,
-  X
+  X,
+  Download
 } from 'lucide-react';
 
 interface AdminTripDetailProps {
@@ -192,10 +193,6 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
 
   const handleTriggerPrint = () => {
     setIsPrintMode(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrintMode(false);
-    }, 500);
   };
 
   if (loading) {
@@ -237,10 +234,47 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
 
   return (
     <div className="space-y-8 p-1">
-      {/* Printable Area Wrapper for browser print */}
+      {/* Printable Area Wrapper with PDF Preview and Download button */}
       {isPrintMode && (
-        <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
-          <TripManifestPrint trip={trip} seats={seats} bookings={bookings} company={company} />
+        <div className="fixed inset-0 bg-slate-100 z-50 overflow-y-auto print:bg-white print:p-0">
+          {/* Top Control Bar - Hidden during printing */}
+          <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm z-50 print:hidden">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-white font-black text-sm">
+                📄
+              </div>
+              <div>
+                <h3 className="text-sm font-black uppercase text-slate-800 tracking-tight">Print & Export Preview</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Review manifest format before generation</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Actual PDF Download / Print button */}
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black uppercase text-xs tracking-wider rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download PDF</span>
+              </button>
+              
+              {/* Close Button */}
+              <button
+                onClick={() => setIsPrintMode(false)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold uppercase text-xs tracking-wider rounded-xl transition-all cursor-pointer border border-slate-200"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+
+          {/* Centered paper container mimicking real page */}
+          <div className="p-4 sm:p-8 max-w-4xl mx-auto print:p-0 print:max-w-none">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden print:shadow-none print:border-none print:rounded-none">
+              <TripManifestPrint trip={trip} seats={seats} bookings={bookings} company={company} />
+            </div>
+          </div>
         </div>
       )}
 
