@@ -1,0 +1,6 @@
+{
+  "name": "Bus Seat Reservation & Booking Management",
+  "description": "An all-in-one bus seat booking and reservation platform featuring visual seat charts, real-time booking, admin trip logs, and payment screenshot verification.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
