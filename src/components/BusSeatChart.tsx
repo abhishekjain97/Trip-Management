@@ -4,8 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { TripSeat, BusModelType, SeatStatus } from '../types.js';
-import { Compass, ShieldCheck, HelpCircle } from 'lucide-react';
+import { TripSeat, BusModelType } from '../types.js';
 
 interface BusSeatChartProps {
   seats: TripSeat[];
@@ -76,13 +75,13 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
         </div>
 
         {/* Seats Grid */}
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-auto">
           {grid.map((row, rIdx) => (
             <div key={rIdx} className="flex justify-between items-stretch gap-2">
               {row.map((seat, cIdx) => {
                 if (!seat) {
                   // Aisle spacer
-                  return <div key={cIdx} className="w-14 min-h-18 flex-1 flex items-center justify-center text-slate-300 text-xs font-mono select-none">Aisle</div>;
+                  return <div key={cIdx} className="min-w-16 max-w-30 min-h-[4.8rem] flex-1 flex items-center justify-center text-slate-300 text-xs font-mono select-none">Aisle</div>;
                 }
 
                 const isSelected = selectedSeats.includes(seat.seat_code);

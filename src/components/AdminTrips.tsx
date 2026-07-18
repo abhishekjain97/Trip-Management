@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trip, BusModelType } from '../types.js';
 import { fetchTrips, createTrip } from '../lib/api.js';
-import { Plus, Calendar, Bus, Ticket, Copy, Check, Eye, Trash2, ReceiptIndianRupee, Landmark } from 'lucide-react';
+import { Plus, Calendar, Bus, Ticket, Copy, Check, ReceiptIndianRupee, Landmark } from 'lucide-react';
 
 interface AdminTripsProps {
   onSelectTrip: (id: string) => void;

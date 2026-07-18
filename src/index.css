@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
-/* Trip manifest print layout: A4 page with room reserved at the top/bottom
-   for the fixed header and footer that repeat on every printed page. */
+/* Trip manifest print layout: A4 page. Each printed page card carries its
+   own header and footer inline, so only a plain page margin is needed. */
 @media print {
   @page {
     size: A4;
-    margin: 42mm 10mm 20mm 10mm;
+    margin: 10mm;
   }
 }

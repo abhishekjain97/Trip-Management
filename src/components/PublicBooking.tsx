@@ -9,17 +9,13 @@ import { fetchPublicTrip, bookPublicTrip } from '../lib/api.js';
 import { BusSeatChart } from './BusSeatChart.js';
 import {
   Calendar,
-  IndianRupee,
-  ShieldCheck,
   CheckCircle,
   AlertTriangle,
   UploadCloud,
   FileImage,
   QrCode,
   ArrowRight,
-  Bus,
-  MapPin,
-  X
+  Bus
 } from 'lucide-react';
 
 interface PublicBookingProps {
@@ -321,7 +317,7 @@ export const PublicBooking: React.FC<PublicBookingProps> = ({ shareToken }) => {
                   </div>
 
                   {trip.qr_code_url ? (
-                    <div className="flex justify-center bg-white p-2 rounded-lg border border-slate-200 max-w-[150px] mx-auto shadow-xs">
+                    <div className="flex justify-center bg-white p-2 rounded-lg border border-slate-200 max-w-37.5 mx-auto shadow-xs">
                       <img
                         src={trip.qr_code_url}
                         alt="UPI Payment QR"

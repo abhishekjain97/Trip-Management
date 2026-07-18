@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { TripDetailsResponse, TripSeat, Booking, BusModelType, TripStatus } from '../types.js';
+import { TripDetailsResponse, TripSeat, BusModelType, TripStatus } from '../types.js';
 import {
   fetchTripDetails,
   bookAdminTrip,
@@ -25,13 +25,8 @@ import {
   Printer,
   Ban,
   CircleAlert,
-  Clock,
-  ShieldCheck,
-  UserCheck,
   Eye,
-  FileSpreadsheet,
   X,
-  Download,
   Pencil
 } from 'lucide-react';
 
@@ -288,6 +283,41 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
   const totalBookedSeatsCount = confirmedBookings.reduce((sum, b) => sum + b.seat_codes.length, 0);
   const balanceDue = (totalBookedSeatsCount * trip.seat_price) - advanceCollected;
 
+  // WhatsApp share message: trip details, pricing, and quick booking steps, in English and Hindi.
+  // Note: no emoji here — WhatsApp Desktop's wa.me link handler is known to mangle
+  // surrogate-pair (astral) emoji characters into replacement boxes; plain-text bullets avoid that.
+  const publicBookingUrl = `${window.location.origin}/trip/${trip.public_share_token}`;
+  const formattedTripDate = new Date(trip.trip_date).toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+  const whatsappShareMessage = `*${trip.title}*
+    - Date: ${formattedTripDate}
+    - Seat Price: ₹${trip.seat_price.toLocaleString('en-IN')} per seat
+    - Advance to Book: ₹${trip.advance_per_seat.toLocaleString('en-IN')} per seat
+
+    *How to Book:*
+    1. Open the link below
+    2. Select your seat(s) on the chart
+    3. Enter your name & mobile number
+    4. Pay the advance via the UPI/QR shown and upload the payment screenshot
+    5. Submit — your seat is reserved!
+
+    Link: ${publicBookingUrl}
+
+    --------------------------------
+
+    *${trip.title}*
+    - दिनांक: ${formattedTripDate}
+    - सीट की कीमत: ₹${trip.seat_price.toLocaleString('en-IN')} प्रति सीट
+    - बुकिंग हेतु एडवांस: ₹${trip.advance_per_seat.toLocaleString('en-IN')} प्रति सीट
+
+    *सीट कैसे बुक करें:*
+    1. नीचे दिया गया लिंक खोलें
+    2. चार्ट में अपनी पसंद की सीट चुनें
+    3. अपना नाम और मोबाइल नंबर दर्ज करें
+    4. दिखाए गए UPI/QR से एडवांस भुगतान करें और भुगतान का स्क्रीनशॉट अपलोड करें
+    5. सबमिट करें — आपकी सीट आरक्षित हो जाएगी!
+
+    लिंक: ${publicBookingUrl}`;
+
   return (
     <div className="space-y-8 p-1">
       {/* Printable Area Wrapper with PDF Preview and Download button */}
@@ -305,16 +335,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              {/* Actual PDF Download / Print button */}
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black uppercase text-xs tracking-wider rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download PDF</span>
-              </button>
-              
+            <div className="flex items-center gap-2">             
               {/* Close Button */}
               <button
                 onClick={() => setIsPrintMode(false)}
@@ -325,11 +346,9 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
             </div>
           </div>
 
-          {/* Centered paper container mimicking real page */}
-          <div className="p-4 sm:p-8 max-w-4xl mx-auto print:p-0 print:max-w-none">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden print:shadow-none print:border-none print:rounded-none">
-              <TripManifestPrint trip={trip} seats={seats} bookings={bookings} company={company} />
-            </div>
+          {/* Centered paper container mimicking real pages — each section renders its own card */}
+          <div className="p-4 sm:p-8 print:p-0">
+            <TripManifestPrint trip={trip} seats={seats} bookings={bookings} company={company} />
           </div>
         </div>
       )}
@@ -380,6 +399,21 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
               </>
             )}
           </button>
+
+          {/* Share on WhatsApp */}
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(whatsappShareMessage)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Share booking link on WhatsApp"
+            className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-400 text-emerald-700 font-bold uppercase text-xs tracking-wider rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.71.306 1.263.489 1.694.626.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+              <path d="M12.017 2C6.505 2 2.02 6.478 2.02 11.99c0 1.99.583 3.847 1.579 5.416L2 22l4.71-1.545a9.933 9.933 0 0 0 5.307 1.533h.004c5.512 0 9.997-4.478 9.997-9.99C22.018 6.487 17.53 2 12.017 2zm0 18.007a8.302 8.302 0 0 1-4.474-1.306l-.32-.19-3.32 1.09 1.107-3.24-.208-.334a8.291 8.291 0 0 1-1.264-4.437c0-4.578 3.727-8.303 8.317-8.303 2.222 0 4.31.867 5.878 2.436a8.251 8.251 0 0 1 2.436 5.874c0 4.579-3.727 8.31-8.152 8.31z"/>
+            </svg>
+            <span>Share</span>
+          </a>
 
           {/* Print Manifest */}
           <button
