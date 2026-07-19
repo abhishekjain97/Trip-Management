@@ -25,11 +25,18 @@ export const ManifestHeader: React.FC<ManifestHeaderProps> = ({ trip, company })
         <div className="absolute top-2 left-4 text-[10px] font-mono font-bold border border-black px-2 py-0.5 rounded bg-amber-400">
           OFFICIAL MANIFEST
         </div>
-        <div className="text-2xl font-black uppercase tracking-wider text-slate-950 mt-2">
-          {company.company_name || 'JAIN TOURS & TRAVEL'}
-        </div>
-        <div className="text-xs font-medium text-neutral-600 mt-1 uppercase tracking-widest font-mono">
-          Bus Boarding & Seat Layout Chart
+        <div className='flex items-center gap-2'>
+          <div>
+            <img className='w-12' src="https://xmtvpctezutrinktqcdx.supabase.co/storage/v1/object/public/jaintravels/favicon.png" />
+          </div>
+          <div>
+            <div className="text-2xl font-black uppercase tracking-wider text-slate-950 mt-2">
+              {company.company_name || 'JAIN TOURS & TRAVELS'}
+            </div>
+            <div className="text-xs font-medium text-neutral-600 mt-1 uppercase tracking-widest font-mono">
+              Bus Boarding & Seat Layout Chart
+            </div>
+          </div>
         </div>
 
         {/* Dotted border line */}

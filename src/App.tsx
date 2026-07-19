@@ -134,8 +134,8 @@ export default function App() {
               className="flex items-center gap-3 cursor-pointer group"
               onClick={() => navigateTo('admin_trips', '/admin/trips')}
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
-                <Bus className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+                <img src="https://xmtvpctezutrinktqcdx.supabase.co/storage/v1/object/public/jaintravels/favicon.png" />
               </div>
               <div>
                 <span className="text-[10px] font-mono font-bold text-amber-600 tracking-wider block uppercase">
