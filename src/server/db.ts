@@ -83,96 +83,87 @@ export class LocalDatabase {
 
       // Print full instruction for tables setup
       console.log(`
-======================================================================
-[Bus-Seat-App] SUPABASE TABLES INITIALIZATION SCRIPT:
-If you haven't done so, please run this DDL SQL in your Supabase SQL Editor:
+        ======================================================================
+        [Bus-Seat-App] SUPABASE TABLES INITIALIZATION SCRIPT:
+        If you haven't done so, please run this DDL SQL in your Supabase SQL Editor:
 
-CREATE TABLE IF NOT EXISTS company_settings (
-  id text PRIMARY KEY DEFAULT 'singleton',
-  company_name text NOT NULL,
-  tagline text NOT NULL,
-  logo_url text NOT NULL,
-  header_image_url text NOT NULL
-);
+        CREATE TABLE IF NOT EXISTS company_settings (
+          id text PRIMARY KEY DEFAULT 'singleton',
+          company_name text NOT NULL,
+          tagline text NOT NULL,
+          logo_url text NOT NULL,
+          header_image_url text NOT NULL
+        );
 
-CREATE TABLE IF NOT EXISTS admins (
-  id text PRIMARY KEY,
-  name text NOT NULL,
-  login_key_hash text NOT NULL
-);
+        CREATE TABLE IF NOT EXISTS admins (
+          id text PRIMARY KEY,
+          name text NOT NULL,
+          login_key_hash text NOT NULL
+        );
 
-CREATE TABLE IF NOT EXISTS trips (
-  id text PRIMARY KEY,
-  title text NOT NULL,
-  trip_date text NOT NULL,
-  bus_model text NOT NULL,
-  total_seats integer NOT NULL,
-  seat_price integer NOT NULL,
-  advance_per_seat integer NOT NULL,
-  description text NOT NULL,
-  qr_code_url text,
-  status text NOT NULL,
-  public_share_token text NOT NULL,
-  created_at text NOT NULL,
-  updated_at text NOT NULL
-);
+        CREATE TABLE IF NOT EXISTS trips (
+          id text PRIMARY KEY,
+          title text NOT NULL,
+          trip_date text NOT NULL,
+          bus_model text NOT NULL,
+          total_seats integer NOT NULL,
+          seat_price integer NOT NULL,
+          advance_per_seat integer NOT NULL,
+          description text NOT NULL,
+          qr_code_url text,
+          status text NOT NULL,
+          public_share_token text NOT NULL,
+          created_at text NOT NULL,
+          updated_at text NOT NULL
+        );
 
-CREATE TABLE IF NOT EXISTS trip_seats (
-  id text PRIMARY KEY,
-  trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-  seat_code text NOT NULL,
-  deck text NOT NULL,
-  side text NOT NULL,
-  status text NOT NULL,
-  row_num integer NOT NULL,
-  col_num integer NOT NULL,
-  UNIQUE(trip_id, seat_code)
-);
+        CREATE TABLE IF NOT EXISTS trip_seats (
+          id text PRIMARY KEY,
+          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+          seat_code text NOT NULL,
+          deck text NOT NULL,
+          side text NOT NULL,
+          status text NOT NULL,
+          row_num integer NOT NULL,
+          col_num integer NOT NULL,
+          UNIQUE(trip_id, seat_code)
+        );
 
-CREATE TABLE IF NOT EXISTS bookings (
-  id text PRIMARY KEY,
-  trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-  customer_name text NOT NULL,
-  mobile_number text,
-  message text,
-  payment_screenshot_url text,
-  advance_amount_total integer NOT NULL,
-  booking_source text NOT NULL,
-  payment_verified boolean NOT NULL,
-  status text NOT NULL,
-  created_at text NOT NULL,
-  cancelled_at text,
-  cancelled_by text
-);
+        CREATE TABLE IF NOT EXISTS bookings (
+          id text PRIMARY KEY,
+          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+          customer_name text NOT NULL,
+          mobile_number text,
+          message text,
+          payment_screenshot_url text,
+          advance_amount_total integer NOT NULL,
+          booking_source text NOT NULL,
+          payment_verified boolean NOT NULL,
+          status text NOT NULL,
+          created_at text NOT NULL,
+          cancelled_at text,
+          cancelled_by text
+        );
 
-CREATE TABLE IF NOT EXISTS booking_seats (
-  id text PRIMARY KEY,
-  booking_id text NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-  trip_seat_id text NOT NULL REFERENCES trip_seats(id) ON DELETE CASCADE,
-  advance_amount_for_seat integer NOT NULL,
-  seat_code text NOT NULL
-);
+        CREATE TABLE IF NOT EXISTS booking_seats (
+          id text PRIMARY KEY,
+          booking_id text NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+          trip_seat_id text NOT NULL REFERENCES trip_seats(id) ON DELETE CASCADE,
+          advance_amount_for_seat integer NOT NULL,
+          seat_code text NOT NULL
+        );
 
-CREATE TABLE IF NOT EXISTS trip_logs (
-  id text PRIMARY KEY,
-  trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-  actor_type text NOT NULL,
-  actor_id text,
-  action text NOT NULL,
-  seat_codes text[] NULL,
-  details jsonb NOT NULL,
-  created_at text NOT NULL
-);
-
--- Seed default data
-INSERT INTO admins (id, name, login_key_hash)
-VALUES ('admin-1', 'Jain Tours Admin', '240751c360cf044031d77a06f3661eb5501dc0e6e73cb51e39a77f98ee09a47c')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO company_settings (id, company_name, tagline, logo_url, header_image_url)
-VALUES ('singleton', 'Jain Tours & Travel', 'श्री महावीराय नमः', '', '')
-ON CONFLICT (id) DO NOTHING;
-======================================================================
+        CREATE TABLE IF NOT EXISTS trip_logs (
+          id text PRIMARY KEY,
+          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+          actor_type text NOT NULL,
+          actor_id text,
+          action text NOT NULL,
+          seat_codes text[] NULL,
+          details jsonb NOT NULL,
+          created_at text NOT NULL
+        );
+        ======================================================================
       `);
     } else {
       console.log('[Bus-Seat-App] No Supabase credentials. Defaulting to local db.json.');
@@ -247,7 +238,11 @@ ON CONFLICT (id) DO NOTHING;
           .eq('login_key_hash', hash)
           .maybeSingle();
         if (error) throw error;
-        if (data) return data;
+        // Supabase answered definitively (row found or not) — trust it. Only
+        // an actual query failure below should fall back to the local copy;
+        // otherwise a key invalidated in Supabase would still work via a stale
+        // local record that never got the update.
+        return data || null;
       } catch (e: any) {
         console.error('[Bus-Seat-App] Supabase verifyAdminKey error, falling back to local:', e.message);
       }

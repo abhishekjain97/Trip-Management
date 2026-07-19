@@ -58,6 +58,27 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/auth/change-key', requireAdmin, async (req, res) => {
+  const { currentKey, newKey } = req.body;
+  if (!currentKey || !newKey) {
+    return res.status(400).json({ error: 'Current and new access key are required.' });
+  }
+  if (String(newKey).length < 4) {
+    return res.status(400).json({ error: 'New access key must be at least 4 characters.' });
+  }
+
+  const admin = await db.verifyAdminKey(currentKey);
+  if (!admin) {
+    return res.status(401).json({ error: 'Current access key is incorrect.' });
+  }
+
+  const success = await db.updateAdminKey(admin.id, newKey);
+  if (!success) {
+    return res.status(500).json({ error: 'Failed to update access key.' });
+  }
+  res.json({ success: true });
+});
+
 // Settings
 app.get('/api/settings', async (req, res) => {
   res.json(await db.getSettings());

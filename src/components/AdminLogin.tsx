@@ -96,16 +96,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
             )}
           </button>
         </form>
-
-        {/* Informational Help Box for standard preview */}
-        <div className="mt-8 pt-6 border-t border-dashed border-slate-200 bg-amber-50/70 p-4 rounded-xl border border-amber-100">
-          <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-            💡 Sandbox Testing Credentials
-          </h4>
-          <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
-            Use the default operator access key <code className="bg-amber-100 border border-amber-200 text-amber-950 px-1.5 py-0.5 rounded font-mono font-bold">admin123</code> to authenticate and access the Admin Dashboard.
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -12,6 +12,19 @@ function getAuthHeader(): Record<string, string> {
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
+// Shared fetch wrapper: any 401 (expired/invalid session) clears the stale
+// token and sends the user back to the home page. Login itself uses raw
+// fetch() below since a 401 there just means "wrong access key", not "session expired".
+async function apiFetch(url: string, options?: RequestInit): Promise<Response> {
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    localStorage.removeItem('admin_token');
+    window.location.href = '/';
+    throw new Error('Session expired. Redirecting to home page.');
+  }
+  return res;
+}
+
 export async function loginAdmin(accessKey: string): Promise<{ token: string; admin: { id: string; name: string } }> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
@@ -37,14 +50,30 @@ export function isAdminLoggedIn(): boolean {
   return !!localStorage.getItem('admin_token');
 }
 
+export async function changeAdminKey(currentKey: string, newKey: string): Promise<boolean> {
+  const res = await apiFetch(`${API_BASE}/auth/change-key`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader()
+    },
+    body: JSON.stringify({ currentKey, newKey })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to change access key');
+  }
+  return true;
+}
+
 export async function fetchSettings(): Promise<CompanySettings> {
-  const res = await fetch(`${API_BASE}/settings`);
+  const res = await apiFetch(`${API_BASE}/settings`);
   if (!res.ok) throw new Error('Failed to fetch settings');
   return res.json();
 }
 
 export async function updateSettings(settings: Partial<CompanySettings>): Promise<CompanySettings> {
-  const res = await fetch(`${API_BASE}/settings`, {
+  const res = await apiFetch(`${API_BASE}/settings`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -57,7 +86,7 @@ export async function updateSettings(settings: Partial<CompanySettings>): Promis
 }
 
 export async function fetchTrips(): Promise<Trip[]> {
-  const res = await fetch(`${API_BASE}/trips`, {
+  const res = await apiFetch(`${API_BASE}/trips`, {
     headers: getAuthHeader()
   });
   if (!res.ok) throw new Error('Failed to fetch trips');
@@ -65,7 +94,7 @@ export async function fetchTrips(): Promise<Trip[]> {
 }
 
 export async function fetchTripDetails(id: string): Promise<TripDetailsResponse> {
-  const res = await fetch(`${API_BASE}/trips/${id}`, {
+  const res = await apiFetch(`${API_BASE}/trips/${id}`, {
     headers: getAuthHeader()
   });
   if (!res.ok) throw new Error('Failed to fetch trip details');
@@ -73,7 +102,7 @@ export async function fetchTripDetails(id: string): Promise<TripDetailsResponse>
 }
 
 export async function createTrip(trip: Omit<Trip, 'id' | 'public_share_token' | 'created_at' | 'updated_at'>): Promise<Trip> {
-  const res = await fetch(`${API_BASE}/trips`, {
+  const res = await apiFetch(`${API_BASE}/trips`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -89,7 +118,7 @@ export async function createTrip(trip: Omit<Trip, 'id' | 'public_share_token' | 
 }
 
 export async function updateTrip(id: string, updates: Partial<Trip>): Promise<Trip> {
-  const res = await fetch(`${API_BASE}/trips/${id}`, {
+  const res = await apiFetch(`${API_BASE}/trips/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -144,7 +173,7 @@ export async function bookAdminTrip(
     advanceOverride?: number;
   }
 ): Promise<Booking> {
-  const res = await fetch(`${API_BASE}/admin/trips/${tripId}/book`, {
+  const res = await apiFetch(`${API_BASE}/admin/trips/${tripId}/book`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -160,7 +189,7 @@ export async function bookAdminTrip(
 }
 
 export async function disableSeat(tripId: string, seatCode: string | string[]): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/admin/trips/${tripId}/seats/disable`, {
+  const res = await apiFetch(`${API_BASE}/admin/trips/${tripId}/seats/disable`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -176,7 +205,7 @@ export async function disableSeat(tripId: string, seatCode: string | string[]): 
 }
 
 export async function enableSeat(tripId: string, seatCode: string | string[]): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/admin/trips/${tripId}/seats/enable`, {
+  const res = await apiFetch(`${API_BASE}/admin/trips/${tripId}/seats/enable`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -192,7 +221,7 @@ export async function enableSeat(tripId: string, seatCode: string | string[]): P
 }
 
 export async function verifyPayment(bookingId: string, verified: boolean): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/admin/bookings/${bookingId}/verify`, {
+  const res = await apiFetch(`${API_BASE}/admin/bookings/${bookingId}/verify`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -205,7 +234,7 @@ export async function verifyPayment(bookingId: string, verified: boolean): Promi
 }
 
 export async function cancelBooking(bookingId: string): Promise<boolean> {
-  const res = await fetch(`${API_BASE}/admin/bookings/${bookingId}/cancel`, {
+  const res = await apiFetch(`${API_BASE}/admin/bookings/${bookingId}/cancel`, {
     method: 'POST',
     headers: {
       ...getAuthHeader()

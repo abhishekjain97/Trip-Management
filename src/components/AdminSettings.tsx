@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { CompanySettings } from '../types.js';
 import { fetchSettings, updateSettings } from '../lib/api.js';
 import { Building, Bookmark, Image, ShieldCheck, CheckCircle } from 'lucide-react';
+import { ChangeAccessKeyCard } from './admin-settings/ChangeAccessKeyCard.js';
 
 export const AdminSettings: React.FC = () => {
   const [settings, setSettings] = useState<CompanySettings | null>(null);
@@ -265,6 +266,17 @@ export const AdminSettings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Security & Access */}
+      <div>
+        <h2 className="text-2xl font-black uppercase text-slate-800 tracking-tight">
+          Security & Access
+        </h2>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mt-1">
+          Manage the access key used to log in to this admin panel
+        </p>
+      </div>
+      <ChangeAccessKeyCard />
     </div>
   );
 };
