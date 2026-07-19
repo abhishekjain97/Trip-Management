@@ -25,6 +25,8 @@ interface TripManifestPrintProps {
   // Column headers always stay put — these only hide/show the values underneath.
   showMobile?: boolean;
   showPrice?: boolean;
+  showOutstanding?: boolean;
+  showTotalPaid?: boolean;
   showPayment?: boolean;
   showDisabledSeats?: boolean;
 }
@@ -38,6 +40,8 @@ export const TripManifestPrint: React.FC<TripManifestPrintProps> = ({
   passengerTableFontSize = 'medium',
   showMobile = true,
   showPrice = true,
+  showOutstanding = true,
+  showTotalPaid = true,
   showPayment = true,
   showDisabledSeats = true
 }) => {
@@ -119,11 +123,14 @@ export const TripManifestPrint: React.FC<TripManifestPrintProps> = ({
       : 'Boarding Passengers List',
     content: (
       <PassengerTable
+        trip={trip}
         bookings={chunk}
         startIndex={i * rowsPerPage}
         fontSize={passengerTableFontSize}
         showMobile={showMobile}
         showPrice={showPrice}
+        showOutstanding={showOutstanding}
+        showTotalPaid={showTotalPaid}
         showPayment={showPayment}
       />
     ),
@@ -145,7 +152,7 @@ export const TripManifestPrint: React.FC<TripManifestPrintProps> = ({
   ];
 
   return (
-    <div className="space-y-8 print:space-y-0" id="printable-manifest">
+    <div className="space-y-8 print:space-y-0 overflow-auto" id="printable-manifest">
       {pages.map((page, idx) => (
         <div
           key={page.heading}

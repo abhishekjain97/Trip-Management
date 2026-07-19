@@ -27,6 +27,7 @@ export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, selectedSeat
 
   const totalAdvanceRequired = selectedSeats.length * trip.advance_per_seat;
   const totalFullPrice = selectedSeats.length * trip.seat_price;
+  const bookingClosed = !trip.allow_public_booking;
 
   // Convert uploaded image to Base64 for database screenshot saving
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,7 +48,7 @@ export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, selectedSeat
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedSeats.length === 0 || !name.trim()) return;
+    if (bookingClosed || selectedSeats.length === 0 || !name.trim()) return;
 
     setSubmitting(true);
     try {
@@ -72,6 +73,12 @@ export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, selectedSeat
           Secure your seats by submitting the required deposit slip
         </p>
       </div>
+
+      {bookingClosed && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-[11px] font-bold text-red-800 uppercase tracking-wide leading-relaxed">
+          Online booking is currently closed for this trip. Please contact the operator directly to reserve a seat.
+        </div>
+      )}
 
       {/* Running Seats Selected List */}
       <div className="space-y-3">
@@ -212,11 +219,13 @@ export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, selectedSeat
 
         <button
           type="submit"
-          disabled={submitting}
-          className="w-full py-3.5 bg-slate-900 text-white hover:bg-slate-800 font-bold uppercase text-xs tracking-wider rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all disabled:opacity-50"
+          disabled={submitting || bookingClosed}
+          className="w-full py-3.5 bg-slate-900 text-white hover:bg-slate-800 font-bold uppercase text-xs tracking-wider rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? (
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          ) : bookingClosed ? (
+            <span>Booking Closed</span>
           ) : (
             <>
               <span>Secure Seat Reservation</span>

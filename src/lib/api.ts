@@ -233,6 +233,22 @@ export async function verifyPayment(bookingId: string, verified: boolean): Promi
   return true;
 }
 
+export async function updateBookingBalance(bookingId: string, balanceAmountPaid: number): Promise<boolean> {
+  const res = await apiFetch(`${API_BASE}/admin/bookings/${bookingId}/balance`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader()
+    },
+    body: JSON.stringify({ balanceAmountPaid })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to update balance amount');
+  }
+  return true;
+}
+
 export async function cancelBooking(bookingId: string): Promise<boolean> {
   const res = await apiFetch(`${API_BASE}/admin/bookings/${bookingId}/cancel`, {
     method: 'POST',

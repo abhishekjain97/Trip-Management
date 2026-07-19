@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Trip } from '../../types.js';
+import { sanitizeDescriptionHtml } from '../../lib/sanitizeHtml.js';
 
 interface RouteInfoCardProps {
   trip: Trip;
@@ -25,9 +26,10 @@ export const RouteInfoCard: React.FC<RouteInfoCardProps> = ({ trip }) => {
         </div>
       </div>
       {trip.description && (
-        <p className="text-xs text-slate-500 leading-relaxed font-medium bg-slate-50 p-4 border border-slate-100 rounded-xl uppercase tracking-wide">
-          {trip.description}
-        </p>
+        <div
+          className="text-xs text-slate-500 leading-relaxed font-medium bg-slate-50 p-4 border border-slate-100 rounded-xl uppercase tracking-wide [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4"
+          dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(trip.description) }}
+        />
       )}
     </div>
   );

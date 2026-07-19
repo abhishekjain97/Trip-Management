@@ -5,6 +5,8 @@
 
 import React, { useState } from 'react';
 import { Trip, BusModelType, TripStatus } from '../../types.js';
+import { RichTextEditor } from '../shared/RichTextEditor.js';
+import { ToggleSwitch } from '../shared/ToggleSwitch.js';
 
 interface EditTripModalProps {
   trip: Trip;
@@ -20,6 +22,7 @@ interface EditTripModalProps {
     description: string;
     qr_code_url: string | null;
     status: TripStatus;
+    allow_public_booking: boolean;
   }) => Promise<void>;
 }
 
@@ -33,6 +36,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({ trip, hasConfirmed
   const [editDescription, setEditDescription] = useState(trip.description);
   const [editQr, setEditQr] = useState(trip.qr_code_url || '');
   const [editStatus, setEditStatus] = useState<TripStatus>(trip.status);
+  const [editAllowPublicBooking, setEditAllowPublicBooking] = useState(trip.allow_public_booking);
   const [editSaving, setEditSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,7 +54,8 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({ trip, hasConfirmed
         advance_per_seat: Number(editAdvance),
         description: editDescription,
         qr_code_url: editQr.trim() || null,
-        status: editStatus
+        status: editStatus,
+        allow_public_booking: editAllowPublicBooking
       });
     } finally {
       setEditSaving(false);
@@ -59,7 +64,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({ trip, hasConfirmed
 
   return (
     <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-xl relative my-8 overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] shadow-xl relative my-8 overflow-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <div className="h-2 bg-amber-500"></div>
 
         <div className="p-6 sm:p-8 space-y-6">
@@ -213,17 +218,24 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({ trip, hasConfirmed
               />
             </div>
 
+            {/* Allow Public Booking toggle */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <ToggleSwitch
+                label="Allow Public Bookings"
+                checked={editAllowPublicBooking}
+                onChange={setEditAllowPublicBooking}
+              />
+              <p className="text-[10px] text-slate-400 font-medium mt-2">
+                When off, the public booking link stays viewable but customers cannot submit a reservation.
+              </p>
+            </div>
+
             {/* Description */}
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest block">
                 Route description & Boarding Notes
               </label>
-              <textarea
-                rows={4}
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-amber-500 focus:bg-white transition-all text-slate-900"
-              />
+              <RichTextEditor value={editDescription} onChange={setEditDescription} />
             </div>
 
             {/* Submit buttons */}

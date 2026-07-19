@@ -28,6 +28,7 @@ export interface Trip {
   description: string;
   qr_code_url: string | null;
   status: TripStatus;
+  allow_public_booking: boolean;
   public_share_token: string;
   created_at: string;
   updated_at: string;
@@ -53,6 +54,7 @@ export interface Booking {
   message: string | null;
   payment_screenshot_url: string | null;
   advance_amount_total: number;
+  balance_amount_paid: number;
   booking_source: BookingSource;
   payment_verified: boolean;
   status: BookingStatus;

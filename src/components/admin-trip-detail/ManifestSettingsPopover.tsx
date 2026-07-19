@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { Settings } from 'lucide-react';
 import { PassengerTableFontSize } from '../TripManifestPrint.js';
+import { ToggleSwitch } from '../shared/ToggleSwitch.js';
 
 interface ManifestSettingsPopoverProps {
   rowsPerPage: number;
@@ -16,6 +17,10 @@ interface ManifestSettingsPopoverProps {
   onShowMobileChange: (value: boolean) => void;
   showPrice: boolean;
   onShowPriceChange: (value: boolean) => void;
+  showOutstanding: boolean;
+  onShowOutstandingChange: (value: boolean) => void;
+  showTotalPaid: boolean;
+  onShowTotalPaidChange: (value: boolean) => void;
   showPayment: boolean;
   onShowPaymentChange: (value: boolean) => void;
   showDisabledSeats: boolean;
@@ -30,24 +35,6 @@ const FONT_SIZE_OPTIONS: { value: PassengerTableFontSize; label: string }[] = [
   { value: 'large', label: 'Large' }
 ];
 
-const ToggleRow: React.FC<{ label: string; checked: boolean; onChange: (value: boolean) => void }> = ({ label, checked, onChange }) => (
-  <div className="flex items-center justify-between gap-3">
-    <span className="text-xs font-semibold text-slate-700">{label}</span>
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      title={label}
-      className={`w-10 h-5.5 rounded-full relative transition-colors cursor-pointer shrink-0 ${checked ? 'bg-amber-500' : 'bg-slate-300'}`}
-    >
-      <span
-        className={`absolute top-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transition-transform ${
-          checked ? '' : '-translate-x-4.5'
-        }`}
-      />
-    </button>
-  </div>
-);
-
 export const ManifestSettingsPopover: React.FC<ManifestSettingsPopoverProps> = ({
   rowsPerPage,
   onRowsPerPageChange,
@@ -57,6 +44,10 @@ export const ManifestSettingsPopover: React.FC<ManifestSettingsPopoverProps> = (
   onShowMobileChange,
   showPrice,
   onShowPriceChange,
+  showOutstanding,
+  onShowOutstandingChange,
+  showTotalPaid,
+  onShowTotalPaidChange,
   showPayment,
   onShowPaymentChange,
   showDisabledSeats,
@@ -81,7 +72,7 @@ export const ManifestSettingsPopover: React.FC<ManifestSettingsPopoverProps> = (
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-12 right-0 z-50 w-80 bg-white border border-slate-200 rounded-xl shadow-lg p-5 space-y-5 text-left">
+          <div className="absolute top-12 left-0 sm:left-auto sm:right-0 z-50 w-80 bg-white border border-slate-200 rounded-xl shadow-lg p-5 space-y-5 text-left max-w-[80vw] overflow-auto">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 border-b border-dashed border-slate-200 pb-2">
               Manifest Display Settings
             </h4>
@@ -129,7 +120,7 @@ export const ManifestSettingsPopover: React.FC<ManifestSettingsPopoverProps> = (
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                 Chart Seat Visibility
               </span>
-              <ToggleRow label="Show Disabled Seats" checked={showDisabledSeats} onChange={onShowDisabledSeatChange} />
+              <ToggleSwitch label="Show Disabled Seats" checked={showDisabledSeats} onChange={onShowDisabledSeatChange} />
             </div>
 
             {/* Column visibility toggles */}
@@ -137,9 +128,11 @@ export const ManifestSettingsPopover: React.FC<ManifestSettingsPopoverProps> = (
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                 Column Values (headers always shown)
               </span>
-              <ToggleRow label="Show Mobile Number" checked={showMobile} onChange={onShowMobileChange} />
-              <ToggleRow label="Show Advance Paid" checked={showPrice} onChange={onShowPriceChange} />
-              <ToggleRow label="Show Payment Status" checked={showPayment} onChange={onShowPaymentChange} />
+              <ToggleSwitch label="Show Mobile Number" checked={showMobile} onChange={onShowMobileChange} />
+              <ToggleSwitch label="Show Advance Paid" checked={showPrice} onChange={onShowPriceChange} />
+              <ToggleSwitch label="Show Outstanding" checked={showOutstanding} onChange={onShowOutstandingChange} />
+              <ToggleSwitch label="Show Total Paid" checked={showTotalPaid} onChange={onShowTotalPaidChange} />
+              <ToggleSwitch label="Show Payment Status" checked={showPayment} onChange={onShowPaymentChange} />
             </div>
           </div>
         </>

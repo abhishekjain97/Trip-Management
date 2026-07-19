@@ -12,7 +12,8 @@ import {
   enableSeat,
   verifyPayment,
   cancelBooking,
-  updateTrip
+  updateTrip,
+  updateBookingBalance
 } from '../lib/api.js';
 import { CircleAlert } from 'lucide-react';
 
@@ -173,6 +174,18 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
     }
   };
 
+  const handleSaveBalance = async (bookingId: string, balanceAmountPaid: number) => {
+    await updateBookingBalance(bookingId, balanceAmountPaid);
+    // Update local state smoothly
+    if (inspectedBooking && inspectedBooking.id === bookingId) {
+      setInspectedBooking({
+        ...inspectedBooking,
+        balance_amount_paid: balanceAmountPaid
+      });
+    }
+    loadDetails();
+  };
+
   const handleCancelBooking = async (bookingId: string) => {
     if (!confirm('Are you absolutely sure you want to cancel this reservation? All selected seats will return to Available.')) return;
 
@@ -235,7 +248,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
 
   // Confirmed bookings totals
   const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
-  const advanceCollected = confirmedBookings.reduce((sum, b) => sum + b.advance_amount_total, 0);
+  const advanceCollected = confirmedBookings.reduce((sum, b) => sum + b.advance_amount_total + b.balance_amount_paid, 0);
 
   // Balance due = (number of booked seats * seat price) - advance collected
   const totalBookedSeatsCount = confirmedBookings.reduce((sum, b) => sum + b.seat_codes.length, 0);
@@ -316,6 +329,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
           onVerify={handleVerify}
           onCancel={handleCancelBooking}
           onViewScreenshot={setLightboxUrl}
+          onSaveBalance={handleSaveBalance}
         />
       )}
 

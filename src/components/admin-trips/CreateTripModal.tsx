@@ -6,6 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { BusModelType } from '../../types.js';
 import { createTrip } from '../../lib/api.js';
+import { RichTextEditor } from '../shared/RichTextEditor.js';
+import { ToggleSwitch } from '../shared/ToggleSwitch.js';
 
 interface CreateTripModalProps {
   onClose: () => void;
@@ -21,6 +23,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({ onClose, onCre
   const [formAdvance, setFormAdvance] = useState(300);
   const [formDescription, setFormDescription] = useState('');
   const [formQr, setFormQr] = useState('');
+  const [formAllowPublicBooking, setFormAllowPublicBooking] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Update default seat counts based on selected model
@@ -46,7 +49,8 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({ onClose, onCre
         advance_per_seat: Number(formAdvance),
         description: formDescription,
         qr_code_url: formQr.trim() || null,
-        status: 'active'
+        status: 'active',
+        allow_public_booking: formAllowPublicBooking
       });
       onCreated();
     } catch (err: any) {
@@ -58,7 +62,7 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({ onClose, onCre
 
   return (
     <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-xl relative my-8 overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] shadow-xl relative my-8 overflow-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {/* Top yellow accent stripe */}
         <div className="h-2 bg-amber-500"></div>
 
@@ -195,17 +199,27 @@ export const CreateTripModal: React.FC<CreateTripModalProps> = ({ onClose, onCre
               </p>
             </div>
 
+            {/* Allow Public Booking toggle */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <ToggleSwitch
+                label="Allow Public Bookings"
+                checked={formAllowPublicBooking}
+                onChange={setFormAllowPublicBooking}
+              />
+              <p className="text-[10px] text-slate-400 font-medium mt-2">
+                When off, the public booking link stays viewable but customers cannot submit a reservation — useful for staging a chart before it's ready to go live.
+              </p>
+            </div>
+
             {/* Description WYSIWYG helper */}
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest block">
                 Route description & Boarding Notes
               </label>
-              <textarea
-                rows={4}
-                placeholder="Provide details about boarding locations, departure timing, stopovers, and refund rules..."
+              <RichTextEditor
                 value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-amber-500 focus:bg-white transition-all text-slate-900"
+                onChange={setFormDescription}
+                placeholder="Provide details about boarding locations, departure timing, stopovers, and refund rules..."
               />
             </div>
 

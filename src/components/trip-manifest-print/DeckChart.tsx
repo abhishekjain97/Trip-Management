@@ -47,9 +47,14 @@ export const DeckChart: React.FC<DeckChartProps> = ({ deckSeats, label, showDisa
 
   return (
     <div className="border-2 border-black rounded-xl p-4 flex-1 flex flex-col">
-      <h4 className="text-center font-bold border-b border-black pb-2 mb-3 text-xs uppercase font-mono bg-neutral-100 shrink-0">
-        {label} DECK CHART
-      </h4>
+      <div className='flex justify-between w-full'>
+        <h4 className="w-[50%] font-bold border-b border-black pb-2 mb-3 text-xs uppercase font-mono bg-neutral-100 shrink-0">
+          Entrance
+        </h4>
+        <h4 className="w-[50%] text-right font-bold border-b border-black pb-2 mb-3 text-xs uppercase font-mono bg-neutral-100 shrink-0">
+          Driver
+        </h4>
+      </div>
       <div className="flex-1 flex flex-col gap-1.5">
         {grid.map((row, rIdx) => (
           <div

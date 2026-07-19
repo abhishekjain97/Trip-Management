@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Booking, BookingSeat } from '../../types.js';
 import { Eye, CircleAlert, Ban } from 'lucide-react';
 
@@ -16,6 +16,7 @@ interface InspectBookingModalProps {
   onVerify: (bookingId: string, currentStatus: boolean) => void;
   onCancel: (bookingId: string) => void;
   onViewScreenshot: (url: string) => void;
+  onSaveBalance: (bookingId: string, balanceAmountPaid: number) => Promise<void>;
 }
 
 export const InspectBookingModal: React.FC<InspectBookingModalProps> = ({
@@ -24,8 +25,31 @@ export const InspectBookingModal: React.FC<InspectBookingModalProps> = ({
   onClose,
   onVerify,
   onCancel,
-  onViewScreenshot
+  onViewScreenshot,
+  onSaveBalance
 }) => {
+  const [balanceInput, setBalanceInput] = useState(String(booking.balance_amount_paid ?? 0));
+  const [savingBalance, setSavingBalance] = useState(false);
+  const [balanceSaved, setBalanceSaved] = useState(false);
+
+  const handleSaveBalance = async () => {
+    const amount = Number(balanceInput);
+    if (!Number.isFinite(amount) || amount < 0) {
+      alert('Enter a valid non-negative balance amount.');
+      return;
+    }
+
+    setSavingBalance(true);
+    try {
+      await onSaveBalance(booking.id, amount);
+      setBalanceSaved(true);
+      setTimeout(() => setBalanceSaved(false), 2000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to save balance amount');
+    } finally {
+      setSavingBalance(false);
+    }
+  };
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
@@ -70,6 +94,37 @@ export const InspectBookingModal: React.FC<InspectBookingModalProps> = ({
               <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-0.5">
                 <span className="text-[8px] text-slate-400 uppercase tracking-wider block">Advance Deposit</span>
                 <span className="text-emerald-800 text-[11px] font-black">₹{booking.advance_amount_total}</span>
+              </div>
+            </div>
+
+            {/* Outstanding Balance Amount */}
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                  Outstanding Balance Paid
+                </span>
+                {balanceSaved && (
+                  <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wider">Saved!</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 text-xs font-bold font-mono">₹</span>
+                  <input
+                    type="text"
+                    min={0}
+                    value={balanceInput}
+                    onChange={(e) => setBalanceInput(e.target.value)}
+                    className="w-full pl-6 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold font-mono text-slate-900 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveBalance}
+                  disabled={savingBalance}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold uppercase tracking-wider rounded-lg cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  {savingBalance ? '...' : 'Save'}
+                </button>
               </div>
             </div>
 

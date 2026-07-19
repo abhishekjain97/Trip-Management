@@ -6,6 +6,7 @@
 import React from 'react';
 import { Trip } from '../../types.js';
 import { Calendar, Bus } from 'lucide-react';
+import { sanitizeDescriptionHtml } from '../../lib/sanitizeHtml.js';
 
 interface TripSummaryCardProps {
   trip: Trip;
@@ -35,9 +36,10 @@ export const TripSummaryCard: React.FC<TripSummaryCardProps> = ({ trip }) => {
       </div>
 
       {trip.description && (
-        <div className="bg-slate-50 p-4 border border-slate-150 rounded-xl text-xs text-slate-600 font-medium leading-relaxed uppercase tracking-wider">
-          {trip.description}
-        </div>
+        <div
+          className="bg-slate-50 p-4 border border-slate-150 rounded-xl text-xs text-slate-600 font-medium leading-relaxed uppercase tracking-wider [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4"
+          dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(trip.description) }}
+        />
       )}
     </div>
   );

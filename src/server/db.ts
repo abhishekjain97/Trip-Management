@@ -112,6 +112,7 @@ export class LocalDatabase {
           description text NOT NULL,
           qr_code_url text,
           status text NOT NULL,
+          allow_public_booking boolean NOT NULL DEFAULT true,
           public_share_token text NOT NULL,
           created_at text NOT NULL,
           updated_at text NOT NULL
@@ -137,6 +138,7 @@ export class LocalDatabase {
           message text,
           payment_screenshot_url text,
           advance_amount_total integer NOT NULL,
+          balance_amount_paid integer NOT NULL DEFAULT 0,
           booking_source text NOT NULL,
           payment_verified boolean NOT NULL,
           status text NOT NULL,
@@ -823,6 +825,7 @@ export class LocalDatabase {
         message,
         payment_screenshot_url: paymentScreenshotUrl,
         advance_amount_total: advanceTotal,
+        balance_amount_paid: 0,
         booking_source: bookingSource,
         payment_verified: bookingSource === 'admin',
         status: 'confirmed',
@@ -1075,6 +1078,81 @@ export class LocalDatabase {
     const localBooking = this.data.bookings.find(b => b.id === bookingId);
     if (localBooking) {
       localBooking.payment_verified = verified;
+      this.logAction(log);
+      this.save();
+      return true;
+    }
+    return false;
+  }
+
+  public async updateBookingBalance(bookingId: string, balanceAmountPaid: number): Promise<boolean> {
+    let booking: Booking | null = null;
+    if (this.supabase) {
+      try {
+        const { data, error } = await this.supabase
+          .from('bookings')
+          .select('*')
+          .eq('id', bookingId)
+          .maybeSingle();
+        if (error) throw error;
+        booking = data;
+      } catch (e: any) {
+        console.error('[Bus-Seat-App] Supabase get booking for balance update error, falling back to local:', e.message);
+        booking = this.data.bookings.find(b => b.id === bookingId) || null;
+      }
+    } else {
+      booking = this.data.bookings.find(b => b.id === bookingId) || null;
+    }
+
+    if (!booking) return false;
+
+    let bSeats: BookingSeat[] = [];
+    if (this.supabase) {
+      try {
+        const { data, error } = await this.supabase
+          .from('booking_seats')
+          .select('*')
+          .eq('booking_id', bookingId);
+        if (error) throw error;
+        bSeats = data || [];
+      } catch (e: any) {
+        console.error('[Bus-Seat-App] Supabase get booking seats for balance update error, falling back to local:', e.message);
+        bSeats = this.data.booking_seats.filter(bs => bs.booking_id === bookingId);
+      }
+    } else {
+      bSeats = this.data.booking_seats.filter(bs => bs.booking_id === bookingId);
+    }
+    const seatCodes = bSeats.map(bs => bs.seat_code);
+
+    const log: TripLog = {
+      id: crypto.randomUUID(),
+      trip_id: booking.trip_id,
+      actor_type: 'admin',
+      actor_id: 'admin-1',
+      action: 'balance_updated',
+      seat_codes: seatCodes,
+      details: { customer_name: booking.customer_name, balance_amount_paid: balanceAmountPaid },
+      created_at: new Date().toISOString()
+    };
+
+    if (this.supabase) {
+      try {
+        const { error: bUpdateError } = await this.supabase
+          .from('bookings')
+          .update({ balance_amount_paid: balanceAmountPaid })
+          .eq('id', bookingId);
+        if (bUpdateError) throw bUpdateError;
+
+        await this.supabase.from('trip_logs').insert(log);
+        return true;
+      } catch (e: any) {
+        console.error('[Bus-Seat-App] Supabase updateBookingBalance error, falling back to local:', e.message);
+      }
+    }
+
+    const localBooking = this.data.bookings.find(b => b.id === bookingId);
+    if (localBooking) {
+      localBooking.balance_amount_paid = balanceAmountPaid;
       this.logAction(log);
       this.save();
       return true;

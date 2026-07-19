@@ -108,7 +108,7 @@ app.get('/api/trips/:id', requireAdmin, async (req, res) => {
 
 app.post('/api/trips', requireAdmin, async (req, res) => {
   try {
-    const { title, trip_date, bus_model, total_seats, seat_price, advance_per_seat, description, qr_code_url } = req.body;
+    const { title, trip_date, bus_model, total_seats, seat_price, advance_per_seat, description, qr_code_url, allow_public_booking } = req.body;
     if (!title || !trip_date || !bus_model || !total_seats || !seat_price || !advance_per_seat) {
       return res.status(400).json({ error: 'Missing required trip fields.' });
     }
@@ -121,7 +121,8 @@ app.post('/api/trips', requireAdmin, async (req, res) => {
       advance_per_seat: Number(advance_per_seat),
       description: description || '',
       qr_code_url: qr_code_url || null,
-      status: 'active'
+      status: 'active',
+      allow_public_booking: allow_public_booking !== false
     });
     res.status(201).json(trip);
   } catch (e: any) {
@@ -164,6 +165,10 @@ app.get('/api/public/trip/:shareToken', async (req, res) => {
 app.post('/api/public/trip/:shareToken/book', async (req, res) => {
   const trip = await db.getTripByShareToken(req.params.shareToken);
   if (!trip) return res.status(404).json({ error: 'Trip not found.' });
+
+  if (!trip.allow_public_booking) {
+    return res.status(403).json({ error: 'Public booking is not allowed for this trip. Please contact the operator directly.' });
+  }
 
   const { customerName, mobileNumber, message, paymentScreenshotUrl, seatCodes } = req.body;
   if (!customerName || !seatCodes || !Array.isArray(seatCodes) || seatCodes.length === 0) {
@@ -239,6 +244,17 @@ app.post('/api/admin/trips/:id/seats/enable', requireAdmin, async (req, res) => 
 app.post('/api/admin/bookings/:bookingId/verify', requireAdmin, async (req, res) => {
   const { verified } = req.body;
   const success = await db.verifyPayment(req.params.bookingId, verified !== false);
+  if (!success) return res.status(404).json({ error: 'Booking not found.' });
+  res.json({ success: true });
+});
+
+app.post('/api/admin/bookings/:bookingId/balance', requireAdmin, async (req, res) => {
+  const { balanceAmountPaid } = req.body;
+  const amount = Number(balanceAmountPaid);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return res.status(400).json({ error: 'A valid non-negative balance amount is required.' });
+  }
+  const success = await db.updateBookingBalance(req.params.bookingId, amount);
   if (!success) return res.status(404).json({ error: 'Booking not found.' });
   res.json({ success: true });
 });
