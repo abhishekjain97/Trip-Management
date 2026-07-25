@@ -19,6 +19,7 @@ interface SeatChartPanelProps {
   onBlockSelected: () => void;
   onEnableSelected: () => void;
   onSetPriceClick: () => void;
+  underpaidSeatCodes: string[];
 }
 
 export const SeatChartPanel: React.FC<SeatChartPanelProps> = ({
@@ -32,7 +33,8 @@ export const SeatChartPanel: React.FC<SeatChartPanelProps> = ({
   onBookSelectedClick,
   onBlockSelected,
   onEnableSelected,
-  onSetPriceClick
+  onSetPriceClick,
+  underpaidSeatCodes
 }) => {
   return (
     <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
@@ -142,6 +144,7 @@ export const SeatChartPanel: React.FC<SeatChartPanelProps> = ({
           onSeatClick={onSeatClick}
           isAdmin={true}
           adminMode={adminMode}
+          underpaidSeatCodes={underpaidSeatCodes}
         />
       </div>
     </div>

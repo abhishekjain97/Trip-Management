@@ -13,6 +13,7 @@ interface BusSeatChartProps {
   onSeatClick: (seat: TripSeat) => void;
   isAdmin?: boolean;
   adminMode?: 'book' | 'toggle_status' | 'set_price'; // Admin can toggle between booking, blocking/enabling, or pricing seats
+  underpaidSeatCodes?: string[]; // Booked seats whose booking hasn't been fully paid yet
 }
 
 export const BusSeatChart: React.FC<BusSeatChartProps> = ({
@@ -21,7 +22,8 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
   selectedSeats,
   onSeatClick,
   isAdmin = false,
-  adminMode = 'book'
+  adminMode = 'book',
+  underpaidSeatCodes = []
 }) => {
   const [activeDeck, setActiveDeck] = useState<'lower' | 'upper'>('lower');
 
@@ -87,12 +89,17 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
                 const isSelected = selectedSeats.includes(seat.seat_code);
                 const isBooked = seat.status === 'booked';
                 const isDisabled = seat.status === 'disabled';
+                const isUnderpaid = isBooked && underpaidSeatCodes.includes(seat.seat_code);
 
                 let bgClass = 'bg-white border-slate-200 hover:border-slate-350 hover:bg-slate-50/50';
                 let textClass = 'text-slate-850';
                 let badgeBg = 'bg-slate-100 text-slate-600 border-b border-slate-200';
 
-                if (isBooked) {
+                if (isUnderpaid) {
+                  bgClass = 'bg-orange-50/50 border-orange-400 ring-1 ring-orange-400';
+                  textClass = 'text-orange-950';
+                  badgeBg = 'bg-orange-500 text-white border-b border-orange-600';
+                } else if (isBooked) {
                   bgClass = 'bg-emerald-50/40 border-emerald-150';
                   textClass = 'text-emerald-950';
                   badgeBg = 'bg-emerald-600 text-white border-b border-emerald-700';
@@ -136,6 +143,11 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
                       ) : (
                         <div className="text-[10px] font-semibold text-slate-400 text-center tracking-wide">
                           Available
+                        </div>
+                      )}
+                      {isUnderpaid && (
+                        <div className="text-[8px] font-black text-orange-600 uppercase tracking-wide">
+                          Balance Due
                         </div>
                       )}
                       <div className={`text-[9px] font-mono font-bold ${textClass} opacity-70`}>
@@ -227,7 +239,7 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
       )}
 
       {/* Aesthetic Legend Panel */}
-      <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+      <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
         <div className="flex items-center justify-center gap-2">
           <div className="w-6 h-6 rounded border border-slate-200 bg-white flex flex-col overflow-hidden shadow-xs">
             <div className="bg-slate-100 h-2 border-b border-slate-200"></div>
@@ -245,6 +257,12 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
             <div className="bg-emerald-600 h-2 border-b border-emerald-750"></div>
           </div>
           <span className="text-xs font-semibold text-slate-600">Booked</span>
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-6 h-6 rounded border border-orange-400 bg-orange-50/50 flex flex-col overflow-hidden shadow-xs">
+            <div className="bg-orange-500 h-2 border-b border-orange-600"></div>
+          </div>
+          <span className="text-xs font-semibold text-slate-600">Balance Due</span>
         </div>
         <div className="flex items-center justify-center gap-2 font-medium">
           <div className="w-6 h-6 rounded border border-slate-200 bg-slate-50 opacity-60 flex flex-col overflow-hidden">

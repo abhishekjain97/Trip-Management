@@ -1311,6 +1311,9 @@ export class LocalDatabase {
     }
     const seatCodes = bSeats.map(bs => bs.seat_code);
 
+    const previousBalance = booking.balance_amount_paid;
+    const amountCollected = balanceAmountPaid - previousBalance;
+
     const log: TripLog = {
       id: crypto.randomUUID(),
       trip_id: booking.trip_id,
@@ -1318,7 +1321,7 @@ export class LocalDatabase {
       actor_id: 'admin-1',
       action: 'balance_updated',
       seat_codes: seatCodes,
-      details: { customer_name: booking.customer_name, balance_amount_paid: balanceAmountPaid },
+      details: { customer_name: booking.customer_name, amount_collected: amountCollected, new_balance_amount_paid: balanceAmountPaid },
       created_at: new Date().toISOString()
     };
 

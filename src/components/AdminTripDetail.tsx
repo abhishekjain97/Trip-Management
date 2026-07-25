@@ -291,6 +291,16 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
     0
   ) - advanceCollected;
 
+  // Seats belonging to a booking that hasn't been fully paid yet (advance-only or partial balance)
+  const underpaidSeatCodes = new Set<string>();
+  confirmedBookings.forEach(b => {
+    const bookingTotal = b.seats_details.reduce((sum, bs) => sum + (bs.seat_price ?? trip.seat_price), 0);
+    const bookingPaid = b.advance_amount_total + b.balance_amount_paid;
+    if (bookingTotal - bookingPaid > 0) {
+      b.seat_codes.forEach(code => underpaidSeatCodes.add(code));
+    }
+  });
+
   // Cheapest price among currently selected seats — bounds the admin's advance override
   const minSelectedSeatPrice = selectedSeats.length > 0
     ? Math.min(...selectedSeats.map(code => seats.find(s => s.seat_code === code)?.price ?? trip.seat_price))
@@ -342,6 +352,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
           onBlockSelected={handleBlockSelected}
           onEnableSelected={handleEnableSelected}
           onSetPriceClick={() => setShowSetPriceModal(true)}
+          underpaidSeatCodes={Array.from(underpaidSeatCodes)}
         />
 
         {/* Side Panel: Quick Details, Bookings table & Audit Trail */}
@@ -380,6 +391,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
         <InspectBookingModal
           booking={inspectedBooking}
           seatCode={inspectedSeatCode}
+          defaultSeatPrice={trip.seat_price}
           onClose={() => setShowInspectModal(false)}
           onVerify={handleVerify}
           onCancel={handleCancelBooking}

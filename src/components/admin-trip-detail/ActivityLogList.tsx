@@ -63,11 +63,37 @@ export const ActivityLogList: React.FC<ActivityLogListProps> = ({ logs }) => {
                   )}
 
                   {log.details && (
-                    <p className="text-[10px] text-slate-500 font-medium">
-                      {log.details.customer_name && `Passenger: ${log.details.customer_name}`}
-                      {log.details.title && `Route: ${log.details.title}`}
-                      {log.details.price && `New Price: ₹${log.details.price}`}
-                    </p>
+                    <div className="text-[10px] text-slate-500 font-medium grid grid-cols-2 gap-2">
+                      {log.details.customer_name && (
+                        <div>
+                          <span className="font-bold">Passenger:</span> {log.details.customer_name}
+                        </div>
+                      )}
+
+                      {log.details.amount_collected && (
+                        <div>
+                          <span className="font-bold">Outstanding Paid:</span> ₹{log.details.amount_collected}
+                        </div>
+                      )}
+
+                      {log.details.advance_amount && (
+                        <div>
+                          <span className="font-bold">Advance Paid:</span> ₹{log.details.advance_amount}
+                        </div>
+                      )}
+
+                      {log.details.title && (
+                        <div>
+                          <span className="font-bold">Route:</span> {log.details.title}
+                        </div>
+                      )}
+
+                      {log.details.price && (
+                        <div>
+                          <span className="font-bold">New Price:</span> ₹{log.details.price}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

@@ -12,6 +12,7 @@ type BookingWithSeats = Booking & { seat_codes: string[]; seats_details: Booking
 interface InspectBookingModalProps {
   booking: BookingWithSeats;
   seatCode: string[];
+  defaultSeatPrice: number;
   onClose: () => void;
   onVerify: (bookingId: string, currentStatus: boolean) => void;
   onCancel: (bookingId: string) => void;
@@ -22,27 +23,34 @@ interface InspectBookingModalProps {
 export const InspectBookingModal: React.FC<InspectBookingModalProps> = ({
   booking,
   seatCode,
+  defaultSeatPrice,
   onClose,
   onVerify,
   onCancel,
   onViewScreenshot,
   onSaveBalance
 }) => {
-  const [balanceInput, setBalanceInput] = useState(String(booking.balance_amount_paid ?? 0));
+  const bookingTotal = booking.seats_details.reduce((sum, bs) => sum + (bs.seat_price ?? defaultSeatPrice), 0);
+  const alreadyPaid = booking.advance_amount_total + booking.balance_amount_paid;
+  const outstanding = Math.max(0, bookingTotal - alreadyPaid);
+
+  const [balanceInput, setBalanceInput] = useState(String(outstanding));
   const [savingBalance, setSavingBalance] = useState(false);
   const [balanceSaved, setBalanceSaved] = useState(false);
 
   const handleSaveBalance = async () => {
     const amount = Number(balanceInput);
     if (!Number.isFinite(amount) || amount < 0) {
-      alert('Enter a valid non-negative balance amount.');
+      alert('Enter a valid non-negative amount.');
       return;
     }
 
+    const newBalanceAmountPaid = booking.balance_amount_paid + amount;
     setSavingBalance(true);
     try {
-      await onSaveBalance(booking.id, amount);
+      await onSaveBalance(booking.id, newBalanceAmountPaid);
       setBalanceSaved(true);
+      setBalanceInput(String(Math.max(0, outstanding - amount)));
       setTimeout(() => setBalanceSaved(false), 2000);
     } catch (err: any) {
       alert(err.message || 'Failed to save balance amount');
@@ -101,11 +109,14 @@ export const InspectBookingModal: React.FC<InspectBookingModalProps> = ({
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-                  Outstanding Balance Paid
+                  Collect Balance Payment
                 </span>
                 {balanceSaved && (
                   <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wider">Saved!</span>
                 )}
+              </div>
+              <div className="text-[10px] font-mono font-semibold text-slate-500">
+                Total ₹{bookingTotal} · Paid ₹{alreadyPaid} · <span className="text-orange-600 font-black">Outstanding ₹{outstanding}</span>
               </div>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -126,6 +137,9 @@ export const InspectBookingModal: React.FC<InspectBookingModalProps> = ({
                   {savingBalance ? '...' : 'Save'}
                 </button>
               </div>
+              <p className="text-[9px] text-slate-400 font-medium">
+                Enter the amount being collected now — it's added to what's already been paid.
+              </p>
             </div>
 
             {/* Uploaded Payment Screenshot */}
