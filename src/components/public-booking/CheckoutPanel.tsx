@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Trip } from '../../types.js';
-import { QrCode, FileImage, UploadCloud, ArrowRight } from 'lucide-react';
+import { FileImage, UploadCloud, ArrowRight } from 'lucide-react';
 
 interface CheckoutPanelProps {
   trip: Trip;
@@ -140,7 +140,7 @@ export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, selectedSeat
         {/* Note */}
         <div className="space-y-1">
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest block">
-            Boarding Point / Note (Optional)
+            Note (Optional)
           </label>
           <input
             type="text"
@@ -149,37 +149,6 @@ export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, selectedSeat
             onChange={(e) => setMessage(e.target.value)}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-amber-500 focus:bg-white text-slate-900"
           />
-        </div>
-
-        {/* UPI QR Code scan instruction block */}
-        <div className="space-y-3 bg-slate-900 text-white p-4 rounded-xl border border-slate-800">
-          <div className="flex items-center gap-2">
-            <QrCode className="w-5 h-5 text-amber-400 shrink-0" />
-            <span className="text-xs font-black uppercase tracking-wider text-amber-400">Scan & Pay Deposit</span>
-          </div>
-
-          {trip.qr_code_url ? (
-            <div className="flex justify-center bg-white p-2 rounded-lg border border-slate-200 max-w-37.5 mx-auto shadow-xs">
-              <img
-                src={trip.qr_code_url}
-                alt="UPI Payment QR"
-                referrerPolicy="no-referrer"
-                className="w-full h-auto object-contain"
-              />
-            </div>
-          ) : (
-            <div className="p-4 border border-dashed border-white/20 rounded-lg text-center">
-              <div className="text-[10px] font-mono text-slate-300">UPI ID for Direct Transfers:</div>
-              <div className="font-bold text-sm text-amber-400 font-mono tracking-wide mt-1 select-all">jaintours@upi</div>
-              <div className="text-[9px] text-slate-400 mt-2 uppercase tracking-wider leading-relaxed">
-                Please pay ₹{totalAdvanceRequired.toLocaleString('en-IN')} deposit and submit the screenshot.
-              </div>
-            </div>
-          )}
-
-          <p className="text-[9px] text-slate-400 text-center font-bold uppercase tracking-wider leading-relaxed">
-            Scan using PhonePe, GPay, Paytm, or BHIM. Attach screenshot proof below.
-          </p>
         </div>
 
         {/* Screenshot Upload with Drag-and-drop capability */}

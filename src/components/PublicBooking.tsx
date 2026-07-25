@@ -10,6 +10,7 @@ import { BusSeatChart } from './BusSeatChart.js';
 import { AlertTriangle, Bus } from 'lucide-react';
 import { PublicBookingHeaderBanner } from './public-booking/PublicBookingHeaderBanner.js';
 import { TripSummaryCard } from './public-booking/TripSummaryCard.js';
+import { PaymentQrCard } from './public-booking/PaymentQrCard.js';
 import { CheckoutPanel } from './public-booking/CheckoutPanel.js';
 import { ConcurrencyErrorModal } from './public-booking/ConcurrencyErrorModal.js';
 import { BookingSuccessModal } from './public-booking/BookingSuccessModal.js';
@@ -139,12 +140,14 @@ export const PublicBooking: React.FC<PublicBookingProps> = ({ shareToken }) => {
         </div>
 
         {/* Right Column: Checkout Pricing and Deposit Form */}
-        <div className="lg:col-span-5 space-y-8">
+        <div className="lg:col-span-5 space-y-6">
+          <PaymentQrCard trip={trip} />
+
           {selectedSeats.length > 0 ? (
             <CheckoutPanel trip={trip} selectedSeats={selectedSeats} onSubmit={handleSubmitBooking} />
           ) : (
             // Empty State (No seat selected)
-            <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm text-center space-y-4 max-w-sm mx-auto">
+            <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm text-center space-y-4 mx-auto">
               <Bus className="w-12 h-12 text-slate-300 mx-auto animate-pulse" />
               <h3 className="text-sm font-black uppercase text-slate-800 tracking-wide">No Seats Selected</h3>
               <p className="text-xs font-semibold text-slate-500 leading-relaxed uppercase tracking-wider">

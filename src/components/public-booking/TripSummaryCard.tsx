@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Trip } from '../../types.js';
-import { Calendar, Bus } from 'lucide-react';
+import { Calendar, Bus, IndianRupee } from 'lucide-react';
 import { sanitizeDescriptionHtml } from '../../lib/sanitizeHtml.js';
 
 interface TripSummaryCardProps {
@@ -32,6 +32,17 @@ export const TripSummaryCard: React.FC<TripSummaryCardProps> = ({ trip }) => {
         <div className="flex items-center gap-1.5">
           <Bus className="w-4 h-4 text-slate-400" />
           <span className="uppercase">Layout: {trip.bus_model.replace('_', ' ')}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-xs font-mono font-bold text-slate-500 border-t border-dashed border-slate-100">
+        <div className="flex items-center gap-1.5">
+          <IndianRupee className="w-4 h-4 text-slate-400" />
+          <span>Price Per Seat: ₹{trip.seat_price}/-</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <IndianRupee className="w-4 h-4 text-slate-400" />
+          <span>Advance Per Seat: ₹{trip.advance_per_seat}/-</span>
         </div>
       </div>
 

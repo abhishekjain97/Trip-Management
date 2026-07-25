@@ -14,7 +14,6 @@ interface BookingsTableProps {
 }
 
 export const BookingsTable: React.FC<BookingsTableProps> = ({ confirmedBookings, onInspect }) => {
-  console.log('confirmedBookings', confirmedBookings);
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
       <h3 className="text-sm font-black uppercase tracking-tight text-slate-800 border-b border-dashed border-slate-200 pb-2 flex items-center justify-between">

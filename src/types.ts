@@ -66,9 +66,18 @@ export interface Booking {
 export interface BookingSeat {
   id: string;
   booking_id: string;
-  trip_seat_id: string;
+  trip_id: string;
+  seat_code: string;
   advance_amount_for_seat: number;
-  seat_code: string; // Helper for easy lists
+  active: boolean; // Mirrors booking.status === 'confirmed'; false once the booking is cancelled
+}
+
+export interface DisabledSeat {
+  id: string;
+  trip_id: string;
+  seat_code: string;
+  disabled_at: string;
+  disabled_by: string | null;
 }
 
 export interface TripLog {

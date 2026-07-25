@@ -13,14 +13,15 @@ import {
   TripSeat,
   Booking,
   BookingSeat,
+  DisabledSeat,
   TripLog,
   BusModelType,
   TripStatus,
-  SeatStatus,
   BookingSource,
   BookingStatus,
   ActorType
 } from '../types.js';
+import { computeSeatLayout } from './seatLayout.js';
 
 // Mutex to guarantee seat booking transactions are completely atomic
 export class Mutex {
@@ -58,9 +59,9 @@ export interface DBStructure {
   admins: Admin[];
   company_settings: CompanySettings;
   trips: Trip[];
-  trip_seats: TripSeat[];
   bookings: Booking[];
   booking_seats: BookingSeat[];
+  disabled_seats: DisabledSeat[];
   trip_logs: TripLog[];
 }
 
@@ -118,18 +119,6 @@ export class LocalDatabase {
           updated_at text NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS trip_seats (
-          id text PRIMARY KEY,
-          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-          seat_code text NOT NULL,
-          deck text NOT NULL,
-          side text NOT NULL,
-          status text NOT NULL,
-          row_num integer NOT NULL,
-          col_num integer NOT NULL,
-          UNIQUE(trip_id, seat_code)
-        );
-
         CREATE TABLE IF NOT EXISTS bookings (
           id text PRIMARY KEY,
           trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
@@ -150,9 +139,22 @@ export class LocalDatabase {
         CREATE TABLE IF NOT EXISTS booking_seats (
           id text PRIMARY KEY,
           booking_id text NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-          trip_seat_id text NOT NULL REFERENCES trip_seats(id) ON DELETE CASCADE,
+          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+          seat_code text NOT NULL,
           advance_amount_for_seat integer NOT NULL,
-          seat_code text NOT NULL
+          active boolean NOT NULL DEFAULT true
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS booking_seats_active_seat_uq
+          ON booking_seats(trip_id, seat_code) WHERE active;
+
+        CREATE TABLE IF NOT EXISTS disabled_seats (
+          id text PRIMARY KEY,
+          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+          seat_code text NOT NULL,
+          disabled_at text NOT NULL,
+          disabled_by text,
+          UNIQUE(trip_id, seat_code)
         );
 
         CREATE TABLE IF NOT EXISTS trip_logs (
@@ -202,9 +204,9 @@ export class LocalDatabase {
         header_image_url: ''
       },
       trips: [],
-      trip_seats: [],
       bookings: [],
       booking_seats: [],
+      disabled_seats: [],
       trip_logs: []
     };
 
@@ -398,8 +400,6 @@ export class LocalDatabase {
       updated_at: now
     };
 
-    const seats = this.generateSeatsForTrip(id, newTrip.bus_model, newTrip.total_seats);
-
     const log: TripLog = {
       id: crypto.randomUUID(),
       trip_id: id,
@@ -418,11 +418,6 @@ export class LocalDatabase {
           .insert(newTrip);
         if (tripError) throw tripError;
 
-        const { error: seatsError } = await this.supabase
-          .from('trip_seats')
-          .insert(seats);
-        if (seatsError) throw seatsError;
-
         const { error: logError } = await this.supabase
           .from('trip_logs')
           .insert(log);
@@ -435,7 +430,6 @@ export class LocalDatabase {
     }
 
     this.data.trips.push(newTrip);
-    this.data.trip_seats.push(...seats);
     this.logAction(log);
     this.save();
     return newTrip;
@@ -452,33 +446,18 @@ export class LocalDatabase {
       updated_at: now
     } as Trip;
 
-    let hasBookings = false;
-    if (this.supabase) {
-      try {
-        const { count, error } = await this.supabase
-          .from('bookings')
-          .select('*', { count: 'exact', head: true })
-          .eq('trip_id', id)
-          .eq('status', 'confirmed');
-        if (error) throw error;
-        hasBookings = (count || 0) > 0;
-      } catch (e: any) {
-        console.error('[Bus-Seat-App] Supabase count bookings error, falling back to local count:', e.message);
-        hasBookings = this.data.bookings.some(b => b.trip_id === id && b.status === 'confirmed');
-      }
-    } else {
-      hasBookings = this.data.bookings.some(b => b.trip_id === id && b.status === 'confirmed');
-    }
-
-    let regeneratedSeats: TripSeat[] | null = null;
     const modelChanged = updates.bus_model && updates.bus_model !== original.bus_model;
     const totalChanged = updates.total_seats && updates.total_seats !== original.total_seats;
 
     if (modelChanged || totalChanged) {
-      if (hasBookings) {
-        throw new Error('Cannot change bus model or capacity because active bookings already exist on this trip.');
-      } else {
-        regeneratedSeats = this.generateSeatsForTrip(id, updatedTrip.bus_model, updatedTrip.total_seats);
+      const newLayout = computeSeatLayout(updatedTrip.bus_model, updatedTrip.total_seats);
+      const validCodes = new Set(newLayout.map(s => s.seat_code));
+      const activeBookingSeats = await this.getActiveBookingSeatsForTrip(id);
+      const orphaned = activeBookingSeats.filter(bs => !validCodes.has(bs.seat_code));
+      if (orphaned.length > 0) {
+        throw new Error(
+          `Cannot change bus model or capacity because seat(s) ${orphaned.map(s => s.seat_code).join(', ')} are already booked and would no longer exist in the new layout.`
+        );
       }
     }
 
@@ -501,19 +480,6 @@ export class LocalDatabase {
           .eq('id', id);
         if (tripError) throw tripError;
 
-        if (regeneratedSeats) {
-          const { error: delError } = await this.supabase
-            .from('trip_seats')
-            .delete()
-            .eq('trip_id', id);
-          if (delError) throw delError;
-
-          const { error: insError } = await this.supabase
-            .from('trip_seats')
-            .insert(regeneratedSeats);
-          if (insError) throw insError;
-        }
-
         const { error: logError } = await this.supabase
           .from('trip_logs')
           .insert(log);
@@ -528,10 +494,6 @@ export class LocalDatabase {
     const idx = this.data.trips.findIndex(t => t.id === id);
     if (idx !== -1) {
       this.data.trips[idx] = updatedTrip;
-      if (regeneratedSeats) {
-        this.data.trip_seats = this.data.trip_seats.filter(s => s.trip_id !== id);
-        this.data.trip_seats.push(...regeneratedSeats);
-      }
       this.logAction(log);
       this.save();
     }
@@ -539,71 +501,108 @@ export class LocalDatabase {
   }
 
   // --- Seat operations ---
-  public async getTripSeats(tripId: string): Promise<TripSeat[]> {
+
+  // Active (non-cancelled) booking_seats rows for a trip — the source of truth for "booked".
+  private async getActiveBookingSeatsForTrip(tripId: string): Promise<BookingSeat[]> {
     if (this.supabase) {
       try {
-        const { data: seats, error: seatsError } = await this.supabase
-          .from('trip_seats')
+        const { data, error } = await this.supabase
+          .from('booking_seats')
           .select('*')
-          .eq('trip_id', tripId);
-        if (seatsError) throw seatsError;
-
-        const { data: bookings, error: bookingsError } = await this.supabase
-          .from('bookings')
-          .select('id, customer_name')
           .eq('trip_id', tripId)
-          .eq('status', 'confirmed');
-        if (bookingsError) throw bookingsError;
-
-        const bookingIds = (bookings || []).map(b => b.id);
-
-        let bookingSeats: BookingSeat[] = [];
-        if (bookingIds.length > 0) {
-          const { data: bSeats, error: bsError } = await this.supabase
-            .from('booking_seats')
-            .select('*')
-            .in('booking_id', bookingIds);
-          if (bsError) throw bsError;
-          bookingSeats = bSeats || [];
-        }
-
-        const bookingMap = new Map((bookings || []).map(b => [b.id, b.customer_name]));
-        const seatToBookingMap = new Map(bookingSeats.map(bs => [bs.trip_seat_id, bs.booking_id]));
-
-        return (seats || []).map(seat => {
-          if (seat.status === 'booked') {
-            const bookingId = seatToBookingMap.get(seat.id);
-            if (bookingId) {
-              const customer_name = bookingMap.get(bookingId);
-              if (customer_name) {
-                return {
-                  ...seat,
-                  customer_name
-                };
-              }
-            }
-          }
-          return seat;
-        });
+          .eq('active', true);
+        if (error) throw error;
+        return data || [];
       } catch (e: any) {
-        console.error('[Bus-Seat-App] Supabase getTripSeats error, falling back to local:', e.message);
+        console.error('[Bus-Seat-App] Supabase getActiveBookingSeatsForTrip error, falling back to local:', e.message);
+      }
+    }
+    return this.data.booking_seats.filter(bs => bs.trip_id === tripId && bs.active);
+  }
+
+  private async getDisabledSeatCodes(tripId: string): Promise<Set<string>> {
+    if (this.supabase) {
+      try {
+        const { data, error } = await this.supabase
+          .from('disabled_seats')
+          .select('seat_code')
+          .eq('trip_id', tripId);
+        if (error) throw error;
+        return new Set((data || []).map((d: any) => d.seat_code));
+      } catch (e: any) {
+        console.error('[Bus-Seat-App] Supabase getDisabledSeatCodes error, falling back to local:', e.message);
+      }
+    }
+    return new Set(this.data.disabled_seats.filter(d => d.trip_id === tripId).map(d => d.seat_code));
+  }
+
+  public async getTripSeats(tripId: string): Promise<TripSeat[]> {
+    const trip = await this.getTripById(tripId);
+    if (!trip) return [];
+
+    const layout = computeSeatLayout(trip.bus_model, trip.total_seats);
+    const activeBookingSeats = await this.getActiveBookingSeatsForTrip(tripId);
+    const disabledCodes = await this.getDisabledSeatCodes(tripId);
+
+    const bookingIds = Array.from(new Set(activeBookingSeats.map(bs => bs.booking_id)));
+    let bookingNameMap = new Map<string, string>();
+    if (bookingIds.length > 0) {
+      if (this.supabase) {
+        try {
+          const { data, error } = await this.supabase
+            .from('bookings')
+            .select('id, customer_name')
+            .in('id', bookingIds)
+            .eq('status', 'confirmed');
+          if (error) throw error;
+          bookingNameMap = new Map((data || []).map((b: any) => [b.id, b.customer_name]));
+        } catch (e: any) {
+          console.error('[Bus-Seat-App] Supabase getTripSeats bookings lookup error, falling back to local:', e.message);
+          bookingNameMap = new Map(
+            this.data.bookings
+              .filter(b => bookingIds.includes(b.id) && b.status === 'confirmed')
+              .map(b => [b.id, b.customer_name])
+          );
+        }
+      } else {
+        bookingNameMap = new Map(
+          this.data.bookings
+            .filter(b => bookingIds.includes(b.id) && b.status === 'confirmed')
+            .map(b => [b.id, b.customer_name])
+        );
       }
     }
 
-    const seats = this.data.trip_seats.filter(s => s.trip_id === tripId);
-    return seats.map(seat => {
-      if (seat.status === 'booked') {
-        const bookingSeat = this.data.booking_seats.find(bs => bs.trip_seat_id === seat.id);
-        if (bookingSeat) {
-          const booking = this.data.bookings.find(b => b.id === bookingSeat.booking_id && b.status === 'confirmed');
-          if (booking) {
-            return {
-              ...seat,
-              customer_name: booking.customer_name
-            };
-          }
-        }
+    const bookedCodeToName = new Map<string, string>();
+    activeBookingSeats.forEach(bs => {
+      const name = bookingNameMap.get(bs.booking_id);
+      if (name) bookedCodeToName.set(bs.seat_code, name);
+    });
+    const bookedCodes = new Set(activeBookingSeats.map(bs => bs.seat_code));
+
+    return layout.map(slot => {
+      const status = bookedCodes.has(slot.seat_code)
+        ? 'booked'
+        : disabledCodes.has(slot.seat_code)
+          ? 'disabled'
+          : 'available';
+
+      const seat: TripSeat = {
+        id: `${tripId}:${slot.seat_code}`,
+        trip_id: tripId,
+        seat_code: slot.seat_code,
+        deck: slot.deck,
+        side: slot.side,
+        status,
+        row_num: slot.row_num,
+        col_num: slot.col_num
+      };
+
+      if (status === 'booked') {
+        const customer_name = bookedCodeToName.get(slot.seat_code);
+        if (customer_name) seat.customer_name = customer_name;
       }
+
       return seat;
     });
   }
@@ -612,103 +611,111 @@ export class LocalDatabase {
     const codes = Array.isArray(seatCode) ? seatCode : [seatCode];
     if (codes.length === 0) return true;
 
-    const seats = await this.getTripSeats(tripId);
-    const targetSeats = seats.filter(s => codes.includes(s.seat_code));
-    if (targetSeats.length === 0) return false;
+    const release = await this.lock();
+    try {
+      const seats = await this.getTripSeats(tripId);
+      const targetSeats = seats.filter(s => codes.includes(s.seat_code));
+      if (targetSeats.length === 0) return false;
 
-    const booked = targetSeats.filter(s => s.status === 'booked');
-    if (booked.length > 0) {
-      throw new Error(`Cannot disable seat(s) ${booked.map(s => s.seat_code).join(', ')} that are already booked.`);
-    }
-
-    const log: TripLog = {
-      id: crypto.randomUUID(),
-      trip_id: tripId,
-      actor_type: 'admin',
-      actor_id: 'admin-1',
-      action: 'seat_disabled',
-      seat_codes: codes,
-      details: {},
-      created_at: new Date().toISOString()
-    };
-
-    if (this.supabase) {
-      try {
-        const { error: updateError } = await this.supabase
-          .from('trip_seats')
-          .update({ status: 'disabled' })
-          .eq('trip_id', tripId)
-          .in('seat_code', codes);
-        if (updateError) throw updateError;
-
-        await this.supabase.from('trip_logs').insert(log);
-        return true;
-      } catch (e: any) {
-        console.error('[Bus-Seat-App] Supabase disableSeat error, falling back to local:', e.message);
+      const booked = targetSeats.filter(s => s.status === 'booked');
+      if (booked.length > 0) {
+        throw new Error(`Cannot disable seat(s) ${booked.map(s => s.seat_code).join(', ')} that are already booked.`);
       }
-    }
 
-    let updatedAny = false;
-    this.data.trip_seats.forEach(s => {
-      if (s.trip_id === tripId && codes.includes(s.seat_code)) {
-        s.status = 'disabled';
-        updatedAny = true;
+      const codesToDisable = targetSeats.filter(s => s.status !== 'disabled').map(s => s.seat_code);
+      if (codesToDisable.length === 0) return true;
+
+      const now = new Date().toISOString();
+      const newRows: DisabledSeat[] = codesToDisable.map(code => ({
+        id: crypto.randomUUID(),
+        trip_id: tripId,
+        seat_code: code,
+        disabled_at: now,
+        disabled_by: 'admin-1'
+      }));
+
+      const log: TripLog = {
+        id: crypto.randomUUID(),
+        trip_id: tripId,
+        actor_type: 'admin',
+        actor_id: 'admin-1',
+        action: 'seat_disabled',
+        seat_codes: codes,
+        details: {},
+        created_at: now
+      };
+
+      if (this.supabase) {
+        try {
+          const { error: insertError } = await this.supabase
+            .from('disabled_seats')
+            .insert(newRows);
+          if (insertError) throw insertError;
+
+          await this.supabase.from('trip_logs').insert(log);
+          return true;
+        } catch (e: any) {
+          console.error('[Bus-Seat-App] Supabase disableSeat error, falling back to local:', e.message);
+        }
       }
-    });
 
-    if (updatedAny) {
+      this.data.disabled_seats.push(...newRows);
       this.logAction(log);
       this.save();
       return true;
+    } finally {
+      release();
     }
-    return false;
   }
 
   public async enableSeat(tripId: string, seatCode: string | string[]): Promise<boolean> {
     const codes = Array.isArray(seatCode) ? seatCode : [seatCode];
     if (codes.length === 0) return true;
 
-    const log: TripLog = {
-      id: crypto.randomUUID(),
-      trip_id: tripId,
-      actor_type: 'admin',
-      actor_id: 'admin-1',
-      action: 'seat_enabled',
-      seat_codes: codes,
-      details: {},
-      created_at: new Date().toISOString()
-    };
+    const release = await this.lock();
+    try {
+      const log: TripLog = {
+        id: crypto.randomUUID(),
+        trip_id: tripId,
+        actor_type: 'admin',
+        actor_id: 'admin-1',
+        action: 'seat_enabled',
+        seat_codes: codes,
+        details: {},
+        created_at: new Date().toISOString()
+      };
 
-    if (this.supabase) {
-      try {
-        const { error: updateError } = await this.supabase
-          .from('trip_seats')
-          .update({ status: 'available' })
-          .eq('trip_id', tripId)
-          .in('seat_code', codes);
-        if (updateError) throw updateError;
+      if (this.supabase) {
+        try {
+          const { error: deleteError } = await this.supabase
+            .from('disabled_seats')
+            .delete()
+            .eq('trip_id', tripId)
+            .in('seat_code', codes);
+          if (deleteError) throw deleteError;
 
-        await this.supabase.from('trip_logs').insert(log);
+          await this.supabase.from('trip_logs').insert(log);
+          return true;
+        } catch (e: any) {
+          console.error('[Bus-Seat-App] Supabase enableSeat error, falling back to local:', e.message);
+        }
+      }
+
+      const before = this.data.disabled_seats.length;
+      this.data.disabled_seats = this.data.disabled_seats.filter(
+        d => !(d.trip_id === tripId && codes.includes(d.seat_code))
+      );
+      const updatedAny = this.data.disabled_seats.length !== before;
+
+      if (updatedAny) {
+        this.logAction(log);
+        this.save();
         return true;
-      } catch (e: any) {
-        console.error('[Bus-Seat-App] Supabase enableSeat error, falling back to local:', e.message);
       }
+      return false;
+    } finally {
+      release();
     }
-
-    let updatedAny = false;
-    this.data.trip_seats.forEach(s => {
-      if (s.trip_id === tripId && codes.includes(s.seat_code)) {
-        s.status = 'available';
-        updatedAny = true;
-      }
-    });
-
-    if (updatedAny) {
-      this.logAction(log);
-      this.save();
-      return true;
-    }
-    return false;
   }
 
   // --- Booking operations ---
@@ -779,36 +786,24 @@ export class LocalDatabase {
       const trip = await this.getTripById(tripId);
       if (!trip) throw new Error('Trip not found');
 
-      let requestedSeats: TripSeat[] = [];
-      if (this.supabase) {
-        try {
-          const { data, error } = await this.supabase
-            .from('trip_seats')
-            .select('*')
-            .eq('trip_id', tripId)
-            .in('seat_code', seatCodes);
-          if (error) throw error;
-          requestedSeats = data || [];
-        } catch (e: any) {
-          console.error('[Bus-Seat-App] Supabase get requested seats error, falling back to local:', e.message);
-          requestedSeats = this.data.trip_seats.filter(
-            s => s.trip_id === tripId && seatCodes.includes(s.seat_code)
-          );
-        }
-      } else {
-        requestedSeats = this.data.trip_seats.filter(
-          s => s.trip_id === tripId && seatCodes.includes(s.seat_code)
-        );
+      if (new Set(seatCodes).size !== seatCodes.length) {
+        throw new Error('Duplicate seat selections are not allowed.');
       }
 
-      if (requestedSeats.length !== seatCodes.length) {
+      const layout = computeSeatLayout(trip.bus_model, trip.total_seats);
+      const validCodes = new Set(layout.map(s => s.seat_code));
+      const missing = seatCodes.filter(code => !validCodes.has(code));
+      if (missing.length > 0) {
         throw new Error('Some requested seats do not exist on this trip.');
       }
 
-      const unavailable = requestedSeats.filter(s => s.status !== 'available');
+      const activeBookingSeats = await this.getActiveBookingSeatsForTrip(tripId);
+      const bookedCodes = new Set(activeBookingSeats.map(bs => bs.seat_code));
+      const disabledCodes = await this.getDisabledSeatCodes(tripId);
+
+      const unavailable = seatCodes.filter(code => bookedCodes.has(code) || disabledCodes.has(code));
       if (unavailable.length > 0) {
-        const codes = unavailable.map(s => s.seat_code).join(', ');
-        throw new Error(`Seat(s) ${codes} are no longer available. Please choose different seats.`);
+        throw new Error(`Seat(s) ${unavailable.join(', ')} are no longer available. Please choose different seats.`);
       }
 
       const bookingId = crypto.randomUUID();
@@ -834,15 +829,14 @@ export class LocalDatabase {
         cancelled_by: null
       };
 
-      const bookingSeats: BookingSeat[] = requestedSeats.map(seat => {
-        return {
-          id: crypto.randomUUID(),
-          booking_id: bookingId,
-          trip_seat_id: seat.id,
-          advance_amount_for_seat: advancePerSeat,
-          seat_code: seat.seat_code
-        };
-      });
+      const bookingSeats: BookingSeat[] = seatCodes.map(code => ({
+        id: crypto.randomUUID(),
+        booking_id: bookingId,
+        trip_id: tripId,
+        seat_code: code,
+        advance_amount_for_seat: advancePerSeat,
+        active: true
+      }));
 
       const log: TripLog = {
         id: crypto.randomUUID(),
@@ -861,27 +855,16 @@ export class LocalDatabase {
 
       if (this.supabase) {
         try {
-          const seatIds = requestedSeats.map(s => s.id);
-          const { error: seatsError } = await this.supabase
-            .from('trip_seats')
-            .update({ status: 'booked' })
-            .in('id', seatIds);
-          if (seatsError) throw seatsError;
-
           const { error: bookingError } = await this.supabase
             .from('bookings')
             .insert(newBooking);
-          if (bookingError) {
-            await this.supabase.from('trip_seats').update({ status: 'available' }).in('id', seatIds);
-            throw bookingError;
-          }
+          if (bookingError) throw bookingError;
 
           const { error: bsError } = await this.supabase
             .from('booking_seats')
             .insert(bookingSeats);
           if (bsError) {
             await this.supabase.from('bookings').delete().eq('id', bookingId);
-            await this.supabase.from('trip_seats').update({ status: 'available' }).in('id', seatIds);
             throw bsError;
           }
 
@@ -892,9 +875,6 @@ export class LocalDatabase {
         }
       }
 
-      requestedSeats.forEach(seat => {
-        seat.status = 'booked';
-      });
       this.data.booking_seats.push(...bookingSeats);
       this.data.bookings.push(newBooking);
       this.logAction(log);
@@ -949,7 +929,6 @@ export class LocalDatabase {
       bSeats = this.data.booking_seats.filter(bs => bs.booking_id === bookingId);
     }
 
-    const seatIds = bSeats.map(bs => bs.trip_seat_id);
     const seatCodes = bSeats.map(bs => bs.seat_code);
 
     const log: TripLog = {
@@ -975,13 +954,11 @@ export class LocalDatabase {
           .eq('id', bookingId);
         if (bUpdateError) throw bUpdateError;
 
-        if (seatIds.length > 0) {
-          const { error: seatsError } = await this.supabase
-            .from('trip_seats')
-            .update({ status: 'available' })
-            .in('id', seatIds);
-          if (seatsError) throw seatsError;
-        }
+        const { error: seatsError } = await this.supabase
+          .from('booking_seats')
+          .update({ active: false })
+          .eq('booking_id', bookingId);
+        if (seatsError) throw seatsError;
 
         await this.supabase.from('trip_logs').insert(log);
         return true;
@@ -997,9 +974,9 @@ export class LocalDatabase {
       localBooking.cancelled_at = now;
       localBooking.cancelled_by = actorId;
 
-      this.data.trip_seats.forEach(s => {
-        if (seatIds.includes(s.id)) {
-          s.status = 'available';
+      this.data.booking_seats.forEach(bs => {
+        if (bs.booking_id === bookingId) {
+          bs.active = false;
         }
       });
 
@@ -1184,176 +1161,4 @@ export class LocalDatabase {
     this.data.trip_logs.push(log);
   }
 
-  // --- Internal seat generator layout template mapping ---
-  private generateSeatsForTrip(tripId: string, busModel: BusModelType, totalSeats: number): TripSeat[] {
-    const seats: TripSeat[] = [];
-    let seatIdCounter = 1;
-
-    if (busModel === '2x2_sitting') {
-      const seatsPerRow = 4;
-      const numRows = Math.ceil(totalSeats / seatsPerRow);
-      let seatsRemaining = totalSeats;
-
-      for (let r = 1; r <= numRows; r++) {
-        const cols = [
-          { side: 'left' as const, code: 'A', col: 0 },
-          { side: 'left' as const, code: 'B', col: 1 },
-          { side: 'right' as const, code: 'C', col: 3 },
-          { side: 'right' as const, code: 'D', col: 4 }
-        ];
-
-        for (const col of cols) {
-          if (seatsRemaining > 0) {
-            seats.push({
-              id: `seat-${tripId}-${seatIdCounter++}`,
-              trip_id: tripId,
-              seat_code: `${r}${col.code}`,
-              deck: 'main',
-              side: col.side,
-              status: 'available',
-              row_num: r,
-              col_num: col.col
-            });
-            seatsRemaining--;
-          }
-        }
-      }
-    } else if (busModel === '2x3_sitting') {
-      const seatsPerRow = 5;
-      const numRows = Math.ceil(totalSeats / seatsPerRow);
-      let seatsRemaining = totalSeats;
-
-      for (let r = 1; r <= numRows; r++) {
-        const cols = [
-          { side: 'left' as const, code: 'A', col: 0 },
-          { side: 'left' as const, code: 'B', col: 1 },
-          { side: 'right' as const, code: 'C', col: 3 },
-          { side: 'right' as const, code: 'D', col: 4 },
-          { side: 'right' as const, code: 'E', col: 5 }
-        ];
-
-        for (const col of cols) {
-          if (seatsRemaining > 0) {
-            seats.push({
-              id: `seat-${tripId}-${seatIdCounter++}`,
-              trip_id: tripId,
-              seat_code: `${r}${col.code}`,
-              deck: 'main',
-              side: col.side,
-              status: 'available',
-              row_num: r,
-              col_num: col.col
-            });
-            seatsRemaining--;
-          }
-        }
-      }
-    } else if (busModel === '2x2_sleeper') {
-      const seatsPerDeck = Math.ceil(totalSeats / 2);
-      const upperDeckCount = totalSeats - seatsPerDeck;
-
-      const generateSleeperDeck = (deckCount: number, deck: 'lower' | 'upper', prefix: 'L' | 'U') => {
-        // Fill rows of 4 (A, B left | C, D right); if exactly 1 seat is left over,
-        // it merges into the last row as a centered 5th seat instead of its own row.
-        const remainder = deckCount % 4;
-        const mergeLeftoverSeat = remainder === 1 && deckCount > 4;
-        const numRows = mergeLeftoverSeat
-          ? Math.floor(deckCount / 4)
-          : Math.ceil(deckCount / 4);
-
-        let remaining = deckCount;
-        for (let r = 1; r <= numRows; r++) {
-          const isLastRow = r === numRows;
-          const cols = isLastRow && mergeLeftoverSeat ? [
-            { side: 'left' as const, code: 'A', col: 0 },
-            { side: 'left' as const, code: 'B', col: 1 },
-            { side: 'left' as const, code: 'M', col: 2 },
-            { side: 'right' as const, code: 'C', col: 3 },
-            { side: 'right' as const, code: 'D', col: 4 }
-          ] : [
-            { side: 'left' as const, code: 'A', col: 0 },
-            { side: 'left' as const, code: 'B', col: 1 },
-            { side: 'right' as const, code: 'C', col: 3 },
-            { side: 'right' as const, code: 'D', col: 4 }
-          ];
-
-          for (const col of cols) {
-            if (remaining > 0) {
-              seats.push({
-                id: `seat-${tripId}-${seatIdCounter++}`,
-                trip_id: tripId,
-                seat_code: `${prefix}-${r}${col.code}`,
-                deck,
-                side: col.side,
-                status: 'available',
-                row_num: r,
-                col_num: col.col
-              });
-              remaining--;
-            }
-          }
-        }
-      };
-
-      generateSleeperDeck(seatsPerDeck, 'lower', 'L');
-      generateSleeperDeck(upperDeckCount, 'upper', 'U');
-    } else if (busModel === '2x1_sleeper') {
-      const seatsPerDeck = Math.ceil(totalSeats / 2);
-      const sleepersPerRow = 3;
-      
-      let lowerRemaining = seatsPerDeck;
-      const lowerRows = Math.ceil(seatsPerDeck / sleepersPerRow);
-      for (let r = 1; r <= lowerRows; r++) {
-        const cols = [
-          { side: 'left' as const, code: 'A', col: 0 },
-          { side: 'left' as const, code: 'B', col: 1 },
-          { side: 'right' as const, code: 'C', col: 3 }
-        ];
-
-        for (const col of cols) {
-          if (lowerRemaining > 0) {
-            seats.push({
-              id: `seat-${tripId}-${seatIdCounter++}`,
-              trip_id: tripId,
-              seat_code: `L-${r}${col.code}`,
-              deck: 'lower',
-              side: col.side,
-              status: 'available',
-              row_num: r,
-              col_num: col.col
-            });
-            lowerRemaining--;
-          }
-        }
-      }
-
-      let upperRemaining = totalSeats - seats.length;
-      const upperRows = Math.ceil(upperRemaining / sleepersPerRow);
-      for (let r = 1; r <= upperRows; r++) {
-        const cols = [
-          { side: 'left' as const, code: 'A', col: 0 },
-          { side: 'left' as const, code: 'B', col: 1 },
-          { side: 'right' as const, code: 'C', col: 3 }
-        ];
-
-        for (const col of cols) {
-          if (upperRemaining > 0) {
-            seats.push({
-              id: `seat-${tripId}-${seatIdCounter++}`,
-              trip_id: tripId,
-              seat_code: `U-${r}${col.code}`,
-              deck: 'upper',
-              side: col.side,
-              status: 'available',
-              row_num: r,
-              col_num: col.col
-            });
-            upperRemaining--;
-          }
-        }
-      }
-    }
-
-    return seats;
-  }
 }
