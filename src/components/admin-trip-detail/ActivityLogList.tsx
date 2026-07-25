@@ -66,6 +66,7 @@ export const ActivityLogList: React.FC<ActivityLogListProps> = ({ logs }) => {
                     <p className="text-[10px] text-slate-500 font-medium">
                       {log.details.customer_name && `Passenger: ${log.details.customer_name}`}
                       {log.details.title && `Route: ${log.details.title}`}
+                      {log.details.price && `New Price: ₹${log.details.price}`}
                     </p>
                   )}
                 </div>

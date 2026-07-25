@@ -220,6 +220,38 @@ export async function enableSeat(tripId: string, seatCode: string | string[]): P
   return true;
 }
 
+export async function setSeatPrices(tripId: string, seatCode: string | string[], price: number): Promise<boolean> {
+  const res = await apiFetch(`${API_BASE}/admin/trips/${tripId}/seats/price`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader()
+    },
+    body: JSON.stringify({ seatCodes: Array.isArray(seatCode) ? seatCode : [seatCode], price })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to set seat price');
+  }
+  return true;
+}
+
+export async function resetSeatPrices(tripId: string, seatCode: string | string[]): Promise<boolean> {
+  const res = await apiFetch(`${API_BASE}/admin/trips/${tripId}/seats/price/reset`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader()
+    },
+    body: JSON.stringify({ seatCodes: Array.isArray(seatCode) ? seatCode : [seatCode] })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to reset seat price');
+  }
+  return true;
+}
+
 export async function verifyPayment(bookingId: string, verified: boolean): Promise<boolean> {
   const res = await apiFetch(`${API_BASE}/admin/bookings/${bookingId}/verify`, {
     method: 'POST',

@@ -12,12 +12,13 @@ interface SeatChartPanelProps {
   busModel: BusModelType;
   selectedSeats: string[];
   onSeatClick: (seat: TripSeat) => void;
-  adminMode: 'book' | 'toggle_status';
-  onAdminModeChange: (mode: 'book' | 'toggle_status') => void;
+  adminMode: 'book' | 'toggle_status' | 'set_price';
+  onAdminModeChange: (mode: 'book' | 'toggle_status' | 'set_price') => void;
   onClearSelected: () => void;
   onBookSelectedClick: () => void;
   onBlockSelected: () => void;
   onEnableSelected: () => void;
+  onSetPriceClick: () => void;
 }
 
 export const SeatChartPanel: React.FC<SeatChartPanelProps> = ({
@@ -30,7 +31,8 @@ export const SeatChartPanel: React.FC<SeatChartPanelProps> = ({
   onClearSelected,
   onBookSelectedClick,
   onBlockSelected,
-  onEnableSelected
+  onEnableSelected,
+  onSetPriceClick
 }) => {
   return (
     <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
@@ -62,6 +64,16 @@ export const SeatChartPanel: React.FC<SeatChartPanelProps> = ({
           >
             Block Seats
           </button>
+          <button
+            onClick={() => onAdminModeChange('set_price')}
+            className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+              adminMode === 'set_price'
+                ? 'bg-amber-500 text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Set Price
+          </button>
         </div>
       </div>
 
@@ -89,7 +101,7 @@ export const SeatChartPanel: React.FC<SeatChartPanelProps> = ({
               >
                 Book Selected
               </button>
-            ) : (
+            ) : adminMode === 'toggle_status' ? (
               <>
                 <button
                   onClick={onBlockSelected}
@@ -104,6 +116,13 @@ export const SeatChartPanel: React.FC<SeatChartPanelProps> = ({
                   Enable Selected
                 </button>
               </>
+            ) : (
+              <button
+                onClick={onSetPriceClick}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-sm"
+              >
+                Set Price
+              </button>
             )}
             <button
               onClick={onClearSelected}

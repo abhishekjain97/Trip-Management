@@ -10,6 +10,8 @@ import {
   bookAdminTrip,
   disableSeat,
   enableSeat,
+  setSeatPrices,
+  resetSeatPrices,
   verifyPayment,
   cancelBooking,
   updateTrip,
@@ -25,6 +27,7 @@ import { RouteInfoCard } from './admin-trip-detail/RouteInfoCard.js';
 import { BookingsTable } from './admin-trip-detail/BookingsTable.js';
 import { ActivityLogList } from './admin-trip-detail/ActivityLogList.js';
 import { BookSeatModal } from './admin-trip-detail/BookSeatModal.js';
+import { SetPriceModal } from './admin-trip-detail/SetPriceModal.js';
 import { InspectBookingModal } from './admin-trip-detail/InspectBookingModal.js';
 import { EditTripModal } from './admin-trip-detail/EditTripModal.js';
 import { ScreenshotLightbox } from './admin-trip-detail/ScreenshotLightbox.js';
@@ -41,14 +44,17 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Admin Chart Toggle: 'book' (book manual) vs 'toggle_status' (disable/enable seats)
-  const [adminMode, setAdminMode] = useState<'book' | 'toggle_status'>('book');
+  // Admin Chart Toggle: 'book' (book manual), 'toggle_status' (disable/enable seats), or 'set_price' (per-seat price override)
+  const [adminMode, setAdminMode] = useState<'book' | 'toggle_status' | 'set_price'>('book');
 
-  // Selected seats for bulk booking or bulk blocking
+  // Selected seats for bulk booking, bulk blocking, or bulk pricing
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
   // Booking Modal
   const [showBookModal, setShowBookModal] = useState(false);
+
+  // Set Price Modal
+  const [showSetPriceModal, setShowSetPriceModal] = useState(false);
 
   // Seat Click Inspection Modal (Booked seat details)
   const [showInspectModal, setShowInspectModal] = useState(false);
@@ -105,6 +111,11 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
       setSelectedSeats(prev =>
         prev.includes(seat.seat_code) ? prev.filter(c => c !== seat.seat_code) : [...prev, seat.seat_code]
       );
+    } else if (adminMode === 'set_price') {
+      // Set Price mode selection — any seat can have its price overridden regardless of status
+      setSelectedSeats(prev =>
+        prev.includes(seat.seat_code) ? prev.filter(c => c !== seat.seat_code) : [...prev, seat.seat_code]
+      );
     } else {
       // Manual Booking Mode
       if (seat.status === 'available') {
@@ -155,6 +166,28 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
       loadDetails();
     } catch (err: any) {
       alert(err.message || 'Failed to enable seats');
+    }
+  };
+
+  const handleApplyPrice = async (price: number) => {
+    try {
+      await setSeatPrices(tripId, selectedSeats, price);
+      setShowSetPriceModal(false);
+      setSelectedSeats([]);
+      loadDetails();
+    } catch (err: any) {
+      alert(err.message || 'Failed to set seat price');
+    }
+  };
+
+  const handleResetPrice = async () => {
+    try {
+      await resetSeatPrices(tripId, selectedSeats);
+      setShowSetPriceModal(false);
+      setSelectedSeats([]);
+      loadDetails();
+    } catch (err: any) {
+      alert(err.message || 'Failed to reset seat price');
     }
   };
 
@@ -243,16 +276,25 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
   const disabledSeats = seats.filter(s => s.status === 'disabled');
   const availableSeats = seats.filter(s => s.status === 'available');
 
-  // Calculations
-  const totalCapacityValue = (trip.total_seats - disabledSeats.length) * trip.seat_price;
+  // Calculations — sum actual per-seat prices, since seats can have individual price overrides
+  const totalCapacityValue = seats
+    .filter(s => s.status !== 'disabled')
+    .reduce((sum, s) => sum + s.price, 0);
 
   // Confirmed bookings totals
   const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
   const advanceCollected = confirmedBookings.reduce((sum, b) => sum + b.advance_amount_total + b.balance_amount_paid, 0);
 
-  // Balance due = (number of booked seats * seat price) - advance collected
-  const totalBookedSeatsCount = confirmedBookings.reduce((sum, b) => sum + b.seat_codes.length, 0);
-  const balanceDue = (totalBookedSeatsCount * trip.seat_price) - advanceCollected;
+  // Balance due = (sum of each booked seat's snapshotted price) - advance collected
+  const balanceDue = confirmedBookings.reduce(
+    (sum, b) => sum + b.seats_details.reduce((s2, bs) => s2 + (bs.seat_price ?? trip.seat_price), 0),
+    0
+  ) - advanceCollected;
+
+  // Cheapest price among currently selected seats — bounds the admin's advance override
+  const minSelectedSeatPrice = selectedSeats.length > 0
+    ? Math.min(...selectedSeats.map(code => seats.find(s => s.seat_code === code)?.price ?? trip.seat_price))
+    : trip.seat_price;
 
   return (
     <div className="space-y-8 p-1">
@@ -299,6 +341,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
           onBookSelectedClick={() => setShowBookModal(true)}
           onBlockSelected={handleBlockSelected}
           onEnableSelected={handleEnableSelected}
+          onSetPriceClick={() => setShowSetPriceModal(true)}
         />
 
         {/* Side Panel: Quick Details, Bookings table & Audit Trail */}
@@ -313,10 +356,22 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
       {showBookModal && selectedSeats.length > 0 && (
         <BookSeatModal
           selectedSeats={selectedSeats}
-          seatPrice={trip.seat_price}
+          seatPrice={minSelectedSeatPrice}
           defaultAdvance={trip.advance_per_seat}
           onClose={() => setShowBookModal(false)}
           onSubmit={handleBookSubmit}
+        />
+      )}
+
+      {/* MODAL: PER-SEAT PRICE OVERRIDE */}
+      {showSetPriceModal && selectedSeats.length > 0 && (
+        <SetPriceModal
+          selectedSeats={selectedSeats}
+          currentPrices={selectedSeats.map(code => seats.find(s => s.seat_code === code)?.price ?? trip.seat_price)}
+          defaultPrice={trip.seat_price}
+          onClose={() => setShowSetPriceModal(false)}
+          onSubmit={handleApplyPrice}
+          onReset={handleResetPrice}
         />
       )}
 

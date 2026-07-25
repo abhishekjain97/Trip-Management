@@ -79,6 +79,7 @@ export const PublicBooking: React.FC<PublicBookingProps> = ({ shareToken }) => {
       loadTrip();
     } catch (err: any) {
       // Catch concurrent booking conflict (409 Conflict)
+      setSelectedSeats([]);
       setConcurrencyError(err.message || 'Seat reservation conflict occurred.');
       loadTrip(); // Reload fresh seat status instantly
     }
@@ -144,7 +145,7 @@ export const PublicBooking: React.FC<PublicBookingProps> = ({ shareToken }) => {
           <PaymentQrCard trip={trip} />
 
           {selectedSeats.length > 0 ? (
-            <CheckoutPanel trip={trip} selectedSeats={selectedSeats} onSubmit={handleSubmitBooking} />
+            <CheckoutPanel trip={trip} seats={seats} selectedSeats={selectedSeats} onSubmit={handleSubmitBooking} />
           ) : (
             // Empty State (No seat selected)
             <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm text-center space-y-4 mx-auto">

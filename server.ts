@@ -241,6 +241,33 @@ app.post('/api/admin/trips/:id/seats/enable', requireAdmin, async (req, res) => 
   }
 });
 
+app.post('/api/admin/trips/:id/seats/price', requireAdmin, async (req, res) => {
+  const { seatCode, seatCodes, price } = req.body;
+  const codes = seatCodes || seatCode;
+  if (!codes) return res.status(400).json({ error: 'Seat code or codes are required.' });
+  if (price === undefined || price === null) return res.status(400).json({ error: 'Price is required.' });
+  try {
+    const success = await db.setSeatPrices(req.params.id, codes, Number(price));
+    if (!success) return res.status(404).json({ error: 'Seat not found.' });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/trips/:id/seats/price/reset', requireAdmin, async (req, res) => {
+  const { seatCode, seatCodes } = req.body;
+  const codes = seatCodes || seatCode;
+  if (!codes) return res.status(400).json({ error: 'Seat code or codes are required.' });
+  try {
+    const success = await db.resetSeatPrices(req.params.id, codes);
+    if (!success) return res.status(404).json({ error: 'Seat not found.' });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 app.post('/api/admin/bookings/:bookingId/verify', requireAdmin, async (req, res) => {
   const { verified } = req.body;
   const success = await db.verifyPayment(req.params.bookingId, verified !== false);

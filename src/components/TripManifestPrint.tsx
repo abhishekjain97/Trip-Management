@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useState } from 'react';
-import { Trip, TripSeat, Booking, CompanySettings } from '../types.js';
+import { Trip, TripSeat, Booking, BookingSeat, CompanySettings } from '../types.js';
 import { ManifestHeader } from './trip-manifest-print/ManifestHeader.js';
 import { ManifestFooter } from './trip-manifest-print/ManifestFooter.js';
 import { DeckChart } from './trip-manifest-print/DeckChart.js';
@@ -16,7 +16,7 @@ export type { PassengerTableFontSize };
 interface TripManifestPrintProps {
   trip: Trip;
   seats: TripSeat[];
-  bookings: (Booking & { seat_codes: string[] })[];
+  bookings: (Booking & { seat_codes: string[]; seats_details: BookingSeat[] })[];
   company: CompanySettings;
   // How many passenger rows to fit on one page before spilling onto the next.
   rowsPerPage?: number;

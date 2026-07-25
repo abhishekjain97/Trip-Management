@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Booking, Trip } from '../../types.js';
+import { Booking, BookingSeat, Trip } from '../../types.js';
 
 export type PassengerTableFontSize = 'small' | 'medium' | 'large';
 
@@ -23,7 +23,7 @@ const BADGE_TEXT_SIZE_CLASSES: Record<PassengerTableFontSize, string> = {
 interface PassengerTableProps {
   trip: Trip;
   // The exact rows to render on this page — already filtered/chunked by the caller.
-  bookings: (Booking & { seat_codes: string[] })[];
+  bookings: (Booking & { seat_codes: string[]; seats_details: BookingSeat[] })[];
   // S.No continues counting across pages instead of resetting to 1 on each page.
   startIndex?: number;
   fontSize?: PassengerTableFontSize;
@@ -71,7 +71,8 @@ export const PassengerTable: React.FC<PassengerTableProps> = ({
           </tr>
         ) : (
           activeBookings.map((booking, idx) => {
-            const outstanding = Number((booking.seat_codes.length * activeTrip.seat_price) - (booking.advance_amount_total + booking.balance_amount_paid));
+            const bookingSeatsTotal = booking.seats_details.reduce((sum, bs) => sum + (bs.seat_price ?? activeTrip.seat_price), 0);
+            const outstanding = Number(bookingSeatsTotal - (booking.advance_amount_total + booking.balance_amount_paid));
             
             return (
               <tr key={booking.id} className="border-b border-black hover:bg-neutral-50 break-inside-avoid">

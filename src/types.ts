@@ -43,6 +43,7 @@ export interface TripSeat {
   status: SeatStatus;
   row_num: number; // For rendering layout rows
   col_num: number; // For layout columns
+  price: number; // Effective price: override if set, else trip.seat_price
   customer_name?: string; // Cache for easy rendering on chart (optional)
 }
 
@@ -69,6 +70,7 @@ export interface BookingSeat {
   trip_id: string;
   seat_code: string;
   advance_amount_for_seat: number;
+  seat_price?: number; // Snapshot of the effective ticket price at booking time (fall back to trip.seat_price if absent)
   active: boolean; // Mirrors booking.status === 'confirmed'; false once the booking is cancelled
 }
 
@@ -78,6 +80,15 @@ export interface DisabledSeat {
   seat_code: string;
   disabled_at: string;
   disabled_by: string | null;
+}
+
+export interface SeatPriceOverride {
+  id: string;
+  trip_id: string;
+  seat_codes: string[]; // All seat codes this override action applied the price to
+  price: number;
+  set_at: string;
+  set_by: string | null;
 }
 
 export interface TripLog {

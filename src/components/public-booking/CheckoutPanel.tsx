@@ -4,11 +4,12 @@
  */
 
 import React, { useState } from 'react';
-import { Trip } from '../../types.js';
+import { Trip, TripSeat } from '../../types.js';
 import { FileImage, UploadCloud, ArrowRight } from 'lucide-react';
 
 interface CheckoutPanelProps {
   trip: Trip;
+  seats: TripSeat[];
   selectedSeats: string[];
   onSubmit: (data: {
     customerName: string;
@@ -18,7 +19,7 @@ interface CheckoutPanelProps {
   }) => Promise<void>;
 }
 
-export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, selectedSeats, onSubmit }) => {
+export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, seats, selectedSeats, onSubmit }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
@@ -26,7 +27,10 @@ export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, selectedSeat
   const [submitting, setSubmitting] = useState(false);
 
   const totalAdvanceRequired = selectedSeats.length * trip.advance_per_seat;
-  const totalFullPrice = selectedSeats.length * trip.seat_price;
+  const totalFullPrice = selectedSeats.reduce(
+    (sum, code) => sum + (seats.find(s => s.seat_code === code)?.price ?? trip.seat_price),
+    0
+  );
   const bookingClosed = !trip.allow_public_booking;
 
   // Convert uploaded image to Base64 for database screenshot saving
@@ -90,8 +94,8 @@ export const CheckoutPanel: React.FC<CheckoutPanelProps> = ({ trip, selectedSeat
         <div className="border-t border-dashed border-slate-200 pt-3 space-y-2">
           {/* Full Tickets Calculation */}
           <div className="flex justify-between items-center text-xs font-bold text-slate-500 uppercase font-mono">
-            <span>Full Ticket Price</span>
-            <span>₹{trip.seat_price} × {selectedSeats.length} = ₹{totalFullPrice.toLocaleString('en-IN')}</span>
+            <span>Full Ticket Price ({selectedSeats.length} seat{selectedSeats.length === 1 ? '' : 's'})</span>
+            <span>₹{totalFullPrice.toLocaleString('en-IN')}</span>
           </div>
 
           {/* Advance required (read-only for customers) */}

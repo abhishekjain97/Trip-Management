@@ -10,5 +10,6 @@
   "bookings": [],
   "booking_seats": [],
   "disabled_seats": [],
+  "seat_price_overrides": [],
   "trip_logs": []
 }

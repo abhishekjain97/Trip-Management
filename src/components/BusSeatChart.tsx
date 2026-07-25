@@ -12,7 +12,7 @@ interface BusSeatChartProps {
   selectedSeats: string[];
   onSeatClick: (seat: TripSeat) => void;
   isAdmin?: boolean;
-  adminMode?: 'book' | 'toggle_status'; // Admin can toggle between booking seats and blocking/enabling them
+  adminMode?: 'book' | 'toggle_status' | 'set_price'; // Admin can toggle between booking, blocking/enabling, or pricing seats
 }
 
 export const BusSeatChart: React.FC<BusSeatChartProps> = ({
@@ -120,24 +120,27 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
                     </div>
 
                     {/* Customer name body */}
-                    <div className="p-1.5 flex-1 flex flex-col justify-between">
+                    <div className="p-1.5 flex-1 flex flex-col justify-center items-center gap-0.5">
                       {isBooked ? (
-                        <div className="text-[11px] font-extrabold leading-tight line-clamp-2 uppercase wrap-break-word text-center m-auto text-slate-800">
+                        <div className="text-[11px] font-extrabold leading-tight line-clamp-2 uppercase wrap-break-word text-center text-slate-800">
                           {seat.customer_name || 'Booked'}
                         </div>
                       ) : isDisabled ? (
-                        <div className="text-[10px] font-medium text-slate-400 text-center m-auto italic">
+                        <div className="text-[10px] font-medium text-slate-400 text-center italic">
                           Blocked
                         </div>
                       ) : isSelected ? (
-                        <div className="text-[10px] font-bold text-amber-600 text-center m-auto uppercase tracking-wide animate-pulse">
+                        <div className="text-[10px] font-bold text-amber-600 text-center uppercase tracking-wide animate-pulse">
                           Selected
                         </div>
                       ) : (
-                        <div className="text-[10px] font-semibold text-slate-400 text-center m-auto tracking-wide">
+                        <div className="text-[10px] font-semibold text-slate-400 text-center tracking-wide">
                           Available
                         </div>
                       )}
+                      <div className={`text-[9px] font-mono font-bold ${textClass} opacity-70`}>
+                        ₹{seat.price.toLocaleString('en-IN')}
+                      </div>
                     </div>
                   </button>
                 );
@@ -167,8 +170,10 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
             <p className="text-xs font-semibold">
               {adminMode === 'book' ? (
                 <span><strong>Admin Mode:</strong> Click available seats to make manual bookings.</span>
-              ) : (
+              ) : adminMode === 'toggle_status' ? (
                 <span><strong>Block Mode:</strong> Click any seat to instantly Block (Disable) or Enable it.</span>
+              ) : (
+                <span><strong>Price Mode:</strong> Click any seat, then set a custom ticket price for your selection.</span>
               )}
             </p>
           </div>

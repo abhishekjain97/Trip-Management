@@ -14,6 +14,7 @@ import {
   Booking,
   BookingSeat,
   DisabledSeat,
+  SeatPriceOverride,
   TripLog,
   BusModelType,
   TripStatus,
@@ -62,6 +63,7 @@ export interface DBStructure {
   bookings: Booking[];
   booking_seats: BookingSeat[];
   disabled_seats: DisabledSeat[];
+  seat_price_overrides: SeatPriceOverride[];
   trip_logs: TripLog[];
 }
 
@@ -142,6 +144,7 @@ export class LocalDatabase {
           trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
           seat_code text NOT NULL,
           advance_amount_for_seat integer NOT NULL,
+          seat_price integer,
           active boolean NOT NULL DEFAULT true
         );
 
@@ -156,6 +159,17 @@ export class LocalDatabase {
           disabled_by text,
           UNIQUE(trip_id, seat_code)
         );
+
+        CREATE TABLE IF NOT EXISTS seat_price_overrides (
+          id text PRIMARY KEY,
+          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+          seat_codes text[] NOT NULL,
+          price integer NOT NULL,
+          set_at text NOT NULL,
+          set_by text
+        );
+
+        CREATE INDEX IF NOT EXISTS seat_price_overrides_trip_idx ON seat_price_overrides(trip_id);
 
         CREATE TABLE IF NOT EXISTS trip_logs (
           id text PRIMARY KEY,
@@ -182,7 +196,14 @@ export class LocalDatabase {
     try {
       if (fs.existsSync(DB_FILE)) {
         const content = fs.readFileSync(DB_FILE, 'utf8');
-        return JSON.parse(content);
+        const parsed = JSON.parse(content);
+        // Tolerate pre-batching legacy rows shaped { seat_code: string } instead of { seat_codes: string[] }
+        if (Array.isArray(parsed.seat_price_overrides)) {
+          parsed.seat_price_overrides = parsed.seat_price_overrides.map((o: any) =>
+            o.seat_codes ? o : { ...o, seat_codes: [o.seat_code], seat_code: undefined }
+          );
+        }
+        return parsed;
       }
     } catch (e) {
       console.error('Error loading DB file, reinitializing', e);
@@ -207,6 +228,7 @@ export class LocalDatabase {
       bookings: [],
       booking_seats: [],
       disabled_seats: [],
+      seat_price_overrides: [],
       trip_logs: []
     };
 
@@ -536,6 +558,54 @@ export class LocalDatabase {
     return new Set(this.data.disabled_seats.filter(d => d.trip_id === tripId).map(d => d.seat_code));
   }
 
+  // All seat_price_overrides rows for a trip — each row now covers a group of seat codes.
+  private async getSeatPriceOverrideRows(tripId: string): Promise<SeatPriceOverride[]> {
+    if (this.supabase) {
+      try {
+        const { data, error } = await this.supabase
+          .from('seat_price_overrides')
+          .select('*')
+          .eq('trip_id', tripId);
+        if (error) throw error;
+        return data || [];
+      } catch (e: any) {
+        console.error('[Bus-Seat-App] Supabase getSeatPriceOverrideRows error, falling back to local:', e.message);
+      }
+    }
+    return this.data.seat_price_overrides.filter(o => o.trip_id === tripId);
+  }
+
+  private async getSeatPriceOverrides(tripId: string): Promise<Map<string, number>> {
+    const rows = await this.getSeatPriceOverrideRows(tripId);
+    const map = new Map<string, number>();
+    rows.forEach(row => row.seat_codes.forEach(code => map.set(code, row.price)));
+    return map;
+  }
+
+  // Given the current override rows for a trip and a set of seat codes about to be re-priced or
+  // reset, compute which rows need to shrink (partial overlap) or disappear (fully consumed).
+  private planSeatPriceOverrideSplit(
+    rows: SeatPriceOverride[],
+    codesToRemove: string[]
+  ): { toDelete: string[]; toUpdate: { id: string; seat_codes: string[] }[] } {
+    const toDelete: string[] = [];
+    const toUpdate: { id: string; seat_codes: string[] }[] = [];
+
+    rows.forEach(row => {
+      const overlaps = row.seat_codes.some(c => codesToRemove.includes(c));
+      if (!overlaps) return;
+
+      const remaining = row.seat_codes.filter(c => !codesToRemove.includes(c));
+      if (remaining.length === 0) {
+        toDelete.push(row.id);
+      } else {
+        toUpdate.push({ id: row.id, seat_codes: remaining });
+      }
+    });
+
+    return { toDelete, toUpdate };
+  }
+
   public async getTripSeats(tripId: string): Promise<TripSeat[]> {
     const trip = await this.getTripById(tripId);
     if (!trip) return [];
@@ -543,6 +613,7 @@ export class LocalDatabase {
     const layout = computeSeatLayout(trip.bus_model, trip.total_seats);
     const activeBookingSeats = await this.getActiveBookingSeatsForTrip(tripId);
     const disabledCodes = await this.getDisabledSeatCodes(tripId);
+    const priceOverrides = await this.getSeatPriceOverrides(tripId);
 
     const bookingIds = Array.from(new Set(activeBookingSeats.map(bs => bs.booking_id)));
     let bookingNameMap = new Map<string, string>();
@@ -595,7 +666,8 @@ export class LocalDatabase {
         side: slot.side,
         status,
         row_num: slot.row_num,
-        col_num: slot.col_num
+        col_num: slot.col_num,
+        price: priceOverrides.get(slot.seat_code) ?? trip.seat_price
       };
 
       if (status === 'booked') {
@@ -718,6 +790,142 @@ export class LocalDatabase {
     }
   }
 
+  public async setSeatPrices(tripId: string, seatCode: string | string[], price: number, setBy: string | null = 'admin-1'): Promise<boolean> {
+    const codes = Array.isArray(seatCode) ? seatCode : [seatCode];
+    if (codes.length === 0) return true;
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new Error('Price must be a positive number.');
+    }
+
+    const release = await this.lock();
+    try {
+      const trip = await this.getTripById(tripId);
+      if (!trip) return false;
+
+      const layout = computeSeatLayout(trip.bus_model, trip.total_seats);
+      const validCodes = new Set(layout.map(s => s.seat_code));
+      const invalid = codes.filter(c => !validCodes.has(c));
+      if (invalid.length > 0) {
+        throw new Error(`Seat(s) ${invalid.join(', ')} do not exist on this trip.`);
+      }
+
+      const existingRows = await this.getSeatPriceOverrideRows(tripId);
+      const { toDelete, toUpdate } = this.planSeatPriceOverrideSplit(existingRows, codes);
+
+      const now = new Date().toISOString();
+      const newRow: SeatPriceOverride = {
+        id: crypto.randomUUID(),
+        trip_id: tripId,
+        seat_codes: codes,
+        price,
+        set_at: now,
+        set_by: setBy
+      };
+
+      const log: TripLog = {
+        id: crypto.randomUUID(),
+        trip_id: tripId,
+        actor_type: 'admin',
+        actor_id: 'admin-1',
+        action: 'seat_price_updated',
+        seat_codes: codes,
+        details: { price },
+        created_at: now
+      };
+
+      if (this.supabase) {
+        try {
+          if (toDelete.length > 0) {
+            const { error } = await this.supabase.from('seat_price_overrides').delete().in('id', toDelete);
+            if (error) throw error;
+          }
+          for (const u of toUpdate) {
+            const { error } = await this.supabase.from('seat_price_overrides').update({ seat_codes: u.seat_codes }).eq('id', u.id);
+            if (error) throw error;
+          }
+
+          const { error: insertError } = await this.supabase.from('seat_price_overrides').insert(newRow);
+          if (insertError) throw insertError;
+
+          await this.supabase.from('trip_logs').insert(log);
+          return true;
+        } catch (e: any) {
+          console.error('[Bus-Seat-App] Supabase setSeatPrices error, falling back to local:', e.message);
+        }
+      }
+
+      const deleteSet = new Set(toDelete);
+      this.data.seat_price_overrides = this.data.seat_price_overrides
+        .filter(o => !deleteSet.has(o.id))
+        .map(o => {
+          const u = toUpdate.find(x => x.id === o.id);
+          return u ? { ...o, seat_codes: u.seat_codes } : o;
+        });
+      this.data.seat_price_overrides.push(newRow);
+
+      this.logAction(log);
+      this.save();
+      return true;
+    } finally {
+      release();
+    }
+  }
+
+  public async resetSeatPrices(tripId: string, seatCode: string | string[]): Promise<boolean> {
+    const codes = Array.isArray(seatCode) ? seatCode : [seatCode];
+    if (codes.length === 0) return true;
+
+    const release = await this.lock();
+    try {
+      const existingRows = await this.getSeatPriceOverrideRows(tripId);
+      const { toDelete, toUpdate } = this.planSeatPriceOverrideSplit(existingRows, codes);
+
+      if (toDelete.length === 0 && toUpdate.length === 0) return false;
+
+      const log: TripLog = {
+        id: crypto.randomUUID(),
+        trip_id: tripId,
+        actor_type: 'admin',
+        actor_id: 'admin-1',
+        action: 'seat_price_reset',
+        seat_codes: codes,
+        details: {},
+        created_at: new Date().toISOString()
+      };
+
+      if (this.supabase) {
+        try {
+          if (toDelete.length > 0) {
+            const { error } = await this.supabase.from('seat_price_overrides').delete().in('id', toDelete);
+            if (error) throw error;
+          }
+          for (const u of toUpdate) {
+            const { error } = await this.supabase.from('seat_price_overrides').update({ seat_codes: u.seat_codes }).eq('id', u.id);
+            if (error) throw error;
+          }
+
+          await this.supabase.from('trip_logs').insert(log);
+          return true;
+        } catch (e: any) {
+          console.error('[Bus-Seat-App] Supabase resetSeatPrices error, falling back to local:', e.message);
+        }
+      }
+
+      const deleteSet = new Set(toDelete);
+      this.data.seat_price_overrides = this.data.seat_price_overrides
+        .filter(o => !deleteSet.has(o.id))
+        .map(o => {
+          const u = toUpdate.find(x => x.id === o.id);
+          return u ? { ...o, seat_codes: u.seat_codes } : o;
+        });
+      this.logAction(log);
+      this.save();
+      return true;
+    } finally {
+      release();
+    }
+  }
+
   // --- Booking operations ---
   public async getBookings(tripId: string): Promise<any[]> {
     if (this.supabase) {
@@ -800,6 +1008,7 @@ export class LocalDatabase {
       const activeBookingSeats = await this.getActiveBookingSeatsForTrip(tripId);
       const bookedCodes = new Set(activeBookingSeats.map(bs => bs.seat_code));
       const disabledCodes = await this.getDisabledSeatCodes(tripId);
+      const priceOverrides = await this.getSeatPriceOverrides(tripId);
 
       const unavailable = seatCodes.filter(code => bookedCodes.has(code) || disabledCodes.has(code));
       if (unavailable.length > 0) {
@@ -835,6 +1044,7 @@ export class LocalDatabase {
         trip_id: tripId,
         seat_code: code,
         advance_amount_for_seat: advancePerSeat,
+        seat_price: priceOverrides.get(code) ?? trip.seat_price,
         active: true
       }));
 
