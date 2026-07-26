@@ -80,6 +80,7 @@ export const ManifestSettingsPopover: React.FC<ManifestSettingsPopoverProps> = (
         </label>
         <input
           type="number"
+          inputMode="numeric"
           min={5}
           max={50}
           value={rowsPerPage}

@@ -76,6 +76,7 @@ export const SetPriceModal: React.FC<SetPriceModalProps> = ({
               </label>
               <input
                 type="number"
+                inputMode="numeric"
                 required
                 min={1}
                 value={price}

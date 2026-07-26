@@ -8,3 +8,16 @@
     margin: 10mm;
   }
 }
+
+/* Prevent iOS Safari (and similar mobile browsers) from auto-zooming the viewport when a form
+   field is focused — that only happens when the field's font-size is below 16px, and the page
+   can be left stuck zoomed in after the keyboard closes. Scoped to small viewports so desktop
+   typography (Tailwind text-xs/text-sm on these same fields) is unaffected. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea,
+  [contenteditable='true'] {
+    font-size: 16px !important;
+  }
+}

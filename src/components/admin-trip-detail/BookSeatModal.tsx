@@ -95,6 +95,7 @@ export const BookSeatModal: React.FC<BookSeatModalProps> = ({ selectedSeats, sea
               </label>
               <input
                 type="number"
+                inputMode="numeric"
                 min={0}
                 max={seatPrice}
                 value={bookAdvanceOverride}

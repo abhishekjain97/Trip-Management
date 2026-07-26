@@ -64,7 +64,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({ trip, hasConfirmed
 
   return (
     <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] shadow-xl relative my-8 overflow-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl h-[80vh] shadow-xl relative my-8 overflow-auto scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <div className="h-2 bg-amber-500"></div>
 
         <div className="p-6 sm:p-8 space-y-6">
@@ -140,6 +140,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({ trip, hasConfirmed
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   required
                   min={10}
                   max={60}
@@ -157,6 +158,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({ trip, hasConfirmed
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   required
                   min={1}
                   value={editPrice}
@@ -172,6 +174,7 @@ export const EditTripModal: React.FC<EditTripModalProps> = ({ trip, hasConfirmed
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   required
                   min={0}
                   max={editPrice}
