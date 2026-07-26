@@ -58,7 +58,7 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
     });
 
     return (
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm relative overflow-hidden max-w-full">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 lg:p-6 shadow-sm relative overflow-hidden max-w-full">
         {/* Bus Front Section (Top) */}
         <div className="border-b border-dashed border-slate-200 pb-4 mb-6 flex justify-between items-center bg-slate-50/50 -mx-6 -mt-6 p-4">
           <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2 md:space-y-6 lg:space-y-6">
       {/* Admin Mode Alert Bar */}
       {isAdmin && (
         <div className="bg-slate-900 text-white p-3 rounded-2xl flex items-center justify-between gap-3 shadow-md">
@@ -197,7 +197,7 @@ export const BusSeatChart: React.FC<BusSeatChartProps> = ({
 
       {/* Tabs for sleeper decks, always showing full width for selected deck */}
       {isSleeper ? (
-        <div className="space-y-6">
+        <div className="space-y-2 md:space-y-6 lg:space-y-6">
           {/* Universal Tab Selectors */}
           <div className="max-w-md mx-auto bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex">
             <button

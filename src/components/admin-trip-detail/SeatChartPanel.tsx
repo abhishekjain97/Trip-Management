@@ -37,8 +37,8 @@ export const SeatChartPanel: React.FC<SeatChartPanelProps> = ({
   underpaidSeatCodes
 }) => {
   return (
-    <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-dashed border-slate-200 pb-4">
+    <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-4 md:p-6 lg:p-6 shadow-sm space-y-2 md:space-y-6 lg:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-dashed border-slate-200 pb-2 md:pb-4 lg:pb-4">
         <div>
           <h3 className="text-lg font-black uppercase text-slate-800 tracking-tight">Interactive Seat Board</h3>
           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">India Standard right-hand drive layout</p>

@@ -133,6 +133,20 @@ export async function updateTrip(id: string, updates: Partial<Trip>): Promise<Tr
   return res.json();
 }
 
+export async function deleteTrip(id: string): Promise<boolean> {
+  const res = await apiFetch(`${API_BASE}/trips/${id}`, {
+    method: 'DELETE',
+    headers: {
+      ...getAuthHeader()
+    }
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to delete trip');
+  }
+  return true;
+}
+
 // Public booking portal
 export async function fetchPublicTrip(shareToken: string): Promise<{ trip: Trip; seats: TripSeat[]; company: CompanySettings }> {
   const res = await fetch(`${API_BASE}/public/trip/${shareToken}`);

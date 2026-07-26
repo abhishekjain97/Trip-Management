@@ -15,6 +15,7 @@ import {
   verifyPayment,
   cancelBooking,
   updateTrip,
+  deleteTrip,
   updateBookingBalance
 } from '../lib/api.js';
 import { CircleAlert } from 'lucide-react';
@@ -30,6 +31,7 @@ import { BookSeatModal } from './admin-trip-detail/BookSeatModal.js';
 import { SetPriceModal } from './admin-trip-detail/SetPriceModal.js';
 import { InspectBookingModal } from './admin-trip-detail/InspectBookingModal.js';
 import { EditTripModal } from './admin-trip-detail/EditTripModal.js';
+import { DeleteTripModal } from './admin-trip-detail/DeleteTripModal.js';
 import { ScreenshotLightbox } from './admin-trip-detail/ScreenshotLightbox.js';
 
 type BookingWithSeats = Booking & { seat_codes: string[]; seats_details: BookingSeat[] };
@@ -71,6 +73,9 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
 
   // Edit Trip Modal
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // Delete Trip Modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     loadDetails();
@@ -250,6 +255,15 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
     }
   };
 
+  const handleDeleteTrip = async () => {
+    try {
+      await deleteTrip(tripId);
+      onBack();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete trip');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
@@ -307,7 +321,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
     : trip.seat_price;
 
   return (
-    <div className="space-y-8 p-1">
+    <div className="space-y-2 md:space-y-4 lg:space-y-8 p-1">
       {/* Printable Area Wrapper with PDF Preview and Download button */}
       {isPrintMode && (
         <PrintPreviewOverlay
@@ -326,6 +340,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
         copied={copied}
         onCopyLink={handleCopyLink}
         onTriggerPrint={() => setIsPrintMode(true)}
+        onDelete={() => setShowDeleteModal(true)}
       />
 
       <TripFinancialSummary
@@ -339,7 +354,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
       />
 
       {/* Main Seat Map Grid vs Logs and Passenger Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 print:hidden items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 md:gap-4 lg:gap-8 print:hidden items-start">
         <SeatChartPanel
           seats={seats}
           busModel={trip.bus_model}
@@ -356,7 +371,7 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
         />
 
         {/* Side Panel: Quick Details, Bookings table & Audit Trail */}
-        <div className="lg:col-span-5 space-y-8">
+        <div className="lg:col-span-5 space-y-2 md:space-y-4 lg:space-y-8">
           <RouteInfoCard trip={trip} />
           <BookingsTable confirmedBookings={confirmedBookings} onInspect={openInspectModal} />
           <ActivityLogList logs={logs} />
@@ -407,6 +422,16 @@ export const AdminTripDetail: React.FC<AdminTripDetailProps> = ({ tripId, onBack
           hasConfirmedBookings={confirmedBookings.length > 0}
           onClose={() => setShowEditModal(false)}
           onSave={handleUpdateTrip}
+        />
+      )}
+
+      {/* MODAL 4: DELETE TRIP */}
+      {showDeleteModal && (
+        <DeleteTripModal
+          trip={trip}
+          confirmedBookingsCount={confirmedBookings.length}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteTrip}
         />
       )}
 

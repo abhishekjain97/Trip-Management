@@ -522,6 +522,35 @@ export class LocalDatabase {
     return updatedTrip;
   }
 
+  public async deleteTrip(id: string): Promise<boolean> {
+    const release = await this.lock();
+    try {
+      const trip = await this.getTripById(id);
+      if (!trip) return false;
+
+      if (this.supabase) {
+        try {
+          const { error } = await this.supabase.from('trips').delete().eq('id', id);
+          if (error) throw error;
+          return true;
+        } catch (e: any) {
+          console.error('[Bus-Seat-App] Supabase deleteTrip error, falling back to local:', e.message);
+        }
+      }
+
+      this.data.trips = this.data.trips.filter(t => t.id !== id);
+      this.data.bookings = this.data.bookings.filter(b => b.trip_id !== id);
+      this.data.booking_seats = this.data.booking_seats.filter(bs => bs.trip_id !== id);
+      this.data.disabled_seats = this.data.disabled_seats.filter(d => d.trip_id !== id);
+      this.data.seat_price_overrides = this.data.seat_price_overrides.filter(o => o.trip_id !== id);
+      this.data.trip_logs = this.data.trip_logs.filter(l => l.trip_id !== id);
+      this.save();
+      return true;
+    } finally {
+      release();
+    }
+  }
+
   // --- Seat operations ---
 
   // Active (non-cancelled) booking_seats rows for a trip — the source of truth for "booked".

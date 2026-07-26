@@ -140,6 +140,16 @@ app.put('/api/trips/:id', requireAdmin, async (req, res) => {
   }
 });
 
+app.delete('/api/trips/:id', requireAdmin, async (req, res) => {
+  try {
+    const success = await db.deleteTrip(req.params.id);
+    if (!success) return res.status(404).json({ error: 'Trip not found.' });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Public Portal Booking Endpoints
 app.get('/api/public/trip/:shareToken', async (req, res) => {
   const trip = await db.getTripByShareToken(req.params.shareToken);
