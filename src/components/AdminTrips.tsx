@@ -61,7 +61,7 @@ export const AdminTrips: React.FC<AdminTripsProps> = ({ onSelectTrip }) => {
   const totalSeatsAllTrips = trips.reduce((sum, t) => sum + t.total_seats, 0);
 
   return (
-    <div className="space-y-8 p-1">
+    <div className="space-y-2 md:space-y-4 lg:space-y-8 p-1">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

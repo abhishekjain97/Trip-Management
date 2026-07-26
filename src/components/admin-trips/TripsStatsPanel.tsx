@@ -13,7 +13,7 @@ interface TripsStatsPanelProps {
 
 export const TripsStatsPanel: React.FC<TripsStatsPanelProps> = ({ activeTripsCount, totalSeatsAllTrips }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 lg:gap-8">
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
           <Bus className="w-6 h-6" />
