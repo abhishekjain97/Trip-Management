@@ -83,106 +83,6 @@ export class LocalDatabase {
     if (supabaseUrl && supabaseAnonKey) {
       console.log('[Bus-Seat-App] Supabase configuration detected. Initializing SupabaseClient.');
       this.supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-      // Print full instruction for tables setup
-      console.log(`
-        ======================================================================
-        [Bus-Seat-App] SUPABASE TABLES INITIALIZATION SCRIPT:
-        If you haven't done so, please run this DDL SQL in your Supabase SQL Editor:
-
-        CREATE TABLE IF NOT EXISTS company_settings (
-          id text PRIMARY KEY DEFAULT 'singleton',
-          company_name text NOT NULL,
-          tagline text NOT NULL,
-          logo_url text NOT NULL,
-          header_image_url text NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS admins (
-          id text PRIMARY KEY,
-          name text NOT NULL,
-          login_key_hash text NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS trips (
-          id text PRIMARY KEY,
-          title text NOT NULL,
-          trip_date text NOT NULL,
-          bus_model text NOT NULL,
-          total_seats integer NOT NULL,
-          seat_price integer NOT NULL,
-          advance_per_seat integer NOT NULL,
-          description text NOT NULL,
-          qr_code_url text,
-          status text NOT NULL,
-          allow_public_booking boolean NOT NULL DEFAULT true,
-          public_share_token text NOT NULL,
-          created_at text NOT NULL,
-          updated_at text NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS bookings (
-          id text PRIMARY KEY,
-          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-          customer_name text NOT NULL,
-          mobile_number text,
-          message text,
-          payment_screenshot_url text,
-          advance_amount_total integer NOT NULL,
-          balance_amount_paid integer NOT NULL DEFAULT 0,
-          booking_source text NOT NULL,
-          payment_verified boolean NOT NULL,
-          status text NOT NULL,
-          created_at text NOT NULL,
-          cancelled_at text,
-          cancelled_by text
-        );
-
-        CREATE TABLE IF NOT EXISTS booking_seats (
-          id text PRIMARY KEY,
-          booking_id text NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-          seat_code text NOT NULL,
-          advance_amount_for_seat integer NOT NULL,
-          seat_price integer,
-          active boolean NOT NULL DEFAULT true
-        );
-
-        CREATE UNIQUE INDEX IF NOT EXISTS booking_seats_active_seat_uq
-          ON booking_seats(trip_id, seat_code) WHERE active;
-
-        CREATE TABLE IF NOT EXISTS disabled_seats (
-          id text PRIMARY KEY,
-          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-          seat_code text NOT NULL,
-          disabled_at text NOT NULL,
-          disabled_by text,
-          UNIQUE(trip_id, seat_code)
-        );
-
-        CREATE TABLE IF NOT EXISTS seat_price_overrides (
-          id text PRIMARY KEY,
-          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-          seat_codes text[] NOT NULL,
-          price integer NOT NULL,
-          set_at text NOT NULL,
-          set_by text
-        );
-
-        CREATE INDEX IF NOT EXISTS seat_price_overrides_trip_idx ON seat_price_overrides(trip_id);
-
-        CREATE TABLE IF NOT EXISTS trip_logs (
-          id text PRIMARY KEY,
-          trip_id text NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-          actor_type text NOT NULL,
-          actor_id text,
-          action text NOT NULL,
-          seat_codes text[] NULL,
-          details jsonb NOT NULL,
-          created_at text NOT NULL
-        );
-        ======================================================================
-      `);
     } else {
       console.log('[Bus-Seat-App] No Supabase credentials. Defaulting to local db.json.');
     }
@@ -215,7 +115,7 @@ export class LocalDatabase {
         {
           id: 'admin-1',
           name: 'Jain Tours Admin',
-          login_key_hash: this.hashKey('admin123') // Default access key is admin123
+          login_key_hash: this.hashKey('admin123')
         }
       ],
       company_settings: {
